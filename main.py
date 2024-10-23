@@ -1,4 +1,8 @@
+from matplotlib import pyplot as plt
 from web3 import Web3
+import networkx as nx
+
+from collections import defaultdict
 import pickle
 import time
 import os
@@ -10,7 +14,7 @@ public_node_url = 'https://cloudflare-eth.com'
 web3 = Web3(Web3.HTTPProvider(public_node_url))
 
 # File to store the ledger (in binary pickle format)
-ledger_file = 'ethereum_ledger_100GB.pkl'
+ledger_file = 'ethereum_ledger.pkl'
 
 def connect_to_ethereum_node():
     """Connect to the Ethereum node and return the Web3 instance."""
@@ -67,6 +71,45 @@ def load_ledger():
     else:
         print("No ledger file found.")
 
+def txs_as_graph(txs: list):
+    G = nx.DiGraph()
+    edges = []
+    for tx in txs:
+        from_account = tx['from']
+        to_account = tx['to']
+        if from_account is None or to_account is None:
+            continue
+        edges.append((from_account, to_account))
+    G.add_edges_from(edges)
+    return G
+    
+def find_conflicts(txs: list):
+    """Analyze transactions to identify read/write sets and conflicts."""
+    read_sets = []
+    write_sets = []
+    conflicts = []
+
+    account_access = defaultdict(lambda: {'reads': set(), 'writes': set()})
+
+    for tx in txs:
+        from_account = tx['from']
+        to_account = tx['to']
+        
+        # Record writes
+        write_sets.append(to_account)
+        account_access[to_account]['writes'].add(tx['hash'])
+        
+        # Record reads
+        read_sets.append(from_account)
+        account_access[from_account]['reads'].add(tx['hash'])
+
+    # Detect conflicts
+    for account, accesses in account_access.items():
+        if accesses['reads'] and accesses['writes']:
+            conflicts.append(account)
+
+    return read_sets, write_sets, conflicts
+
 def fetch_and_save_blocks():
     """Fetch and save blocks from the latest to the earliest."""
     latest_block = web3.eth.block_number
@@ -83,10 +126,24 @@ def fetch_and_save_blocks():
 if __name__ == "__main__":
     if connect_to_ethereum_node():
         # Fetch and save new blocks
-        fetch_and_save_blocks()
+        # fetch_and_save_blocks()
 
         # Load the existing ledger (if any)
-        # blocks = [b for b in load_ledger()]
+        blocks = [b for b in load_ledger()]
+        txs = sum([b["transactions"] for b in blocks], [])
+        read_set, write_set, conflicts = find_conflicts(txs)
+        G = txs_as_graph(txs[:1000])
+
+        #longest_path = nx.dag_longest_path(G)
+        #longest_path_length = len(longest_path) - 1  # Length is number of edges
+        #print(longest_path_length)
         
+        # Draw the graph
+        plt.figure(figsize=(8, 6))
+        pos = nx.spring_layout(G)  # positions for all nodes
+        nx.draw(G, pos, arrows=True)
+        plt.title("Directed Graph Visualization")
+        plt.show()
+                        
 
 
