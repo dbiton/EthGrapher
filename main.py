@@ -1,4 +1,5 @@
 from matplotlib import pyplot as plt
+import pandas as pd
 from web3 import Web3
 import networkx as nx
 
@@ -8,13 +9,14 @@ import time
 import os
 
 # Public node URL (Example)
-public_node_url = 'https://cloudflare-eth.com'
+public_node_url = "https://cloudflare-eth.com"
 
 # Connect to the public Ethereum node
 web3 = Web3(Web3.HTTPProvider(public_node_url))
 
 # File to store the ledger (in binary pickle format)
-ledger_file = 'ethereum_ledger.pkl'
+ledger_file = "ethereum_ledger_100GB.pkl"
+
 
 def connect_to_ethereum_node():
     """Connect to the Ethereum node and return the Web3 instance."""
@@ -25,103 +27,168 @@ def connect_to_ethereum_node():
         print("Connection failed")
         return False
 
+
 def fetch_block(block_num):
     """Fetch a block by its number and return the block details."""
     try:
         block_details = web3.eth.get_block(block_num, full_transactions=True)
         block_data = {
-            'number': block_details.number,
-            'hash': block_details.hash.hex(),
-            'parentHash': block_details.parentHash.hex(),
-            'timestamp': block_details.timestamp,
-            'miner': block_details.miner,
-            'gasUsed': block_details.gasUsed,
-            'transactions': [{
-                'hash': tx.hash.hex(),
-                'from': tx['from'],
-                'to': tx['to'],
-                'value': tx['value'],
-                'gas': tx['gas'],
-                'gasPrice': tx['gasPrice'],
-                'input': tx['input']
-            } for tx in block_details.transactions]
+            "number": block_details.number,
+            "hash": block_details.hash.hex(),
+            "parentHash": block_details.parentHash.hex(),
+            "timestamp": block_details.timestamp,
+            "miner": block_details.miner,
+            "gasUsed": block_details.gasUsed,
+            "transactions": [
+                {
+                    "hash": tx.hash.hex(),
+                    "from": tx["from"],
+                    "to": tx["to"],
+                    "value": tx["value"],
+                    "gas": tx["gas"],
+                    "gasPrice": tx["gasPrice"],
+                    "input": tx["input"],
+                }
+                for tx in block_details.transactions
+            ],
         }
         return block_data
     except Exception as e:
         print(f"Error fetching block {block_num}: {str(e)}")
         return None
 
+
 def save_block_to_ledger(block_data):
     """Save block data to the ledger file using pickle."""
-    with open(ledger_file, 'ab') as f:
+    with open(ledger_file, "ab") as f:
         pickle.dump(block_data, f)
-    print(f"Saved block {block_data['number']} with {len(block_data['transactions'])} transactions.")
+    print(
+        f"Saved block {block_data['number']} with {len(block_data['transactions'])} transactions."
+    )
 
-def load_ledger():
+
+def load_ledger(limit=None):
     """Load the ledger from the file if it exists."""
+    i = 0
     if os.path.exists(ledger_file):
-        with open(ledger_file, 'rb') as f:
+        with open(ledger_file, "rb") as f:
             try:
                 while True:
                     block_data = pickle.load(f)
-                    print(f"Loaded block {block_data['number']}, {len(block_data['transactions'])} transactions.")
+                    i += 1
+                    if i == limit:
+                        return
+                    print(
+                        f"Loaded block {block_data['number']}, {len(block_data['transactions'])} transactions."
+                    )
                     yield block_data
             except EOFError:
                 pass  # End of file reached
     else:
         print("No ledger file found.")
 
+
 def txs_as_graph(txs: list):
     G = nx.DiGraph()
     edges = []
     for tx in txs:
-        from_account = tx['from']
-        to_account = tx['to']
+        from_account = tx["from"]
+        to_account = tx["to"]
         if from_account is None or to_account is None:
             continue
         edges.append((from_account, to_account))
     G.add_edges_from(edges)
     return G
-    
-def find_conflicts(txs: list):
-    """Analyze transactions to identify read/write sets and conflicts."""
-    read_sets = []
-    write_sets = []
-    conflicts = []
 
-    account_access = defaultdict(lambda: {'reads': set(), 'writes': set()})
-
-    for tx in txs:
-        from_account = tx['from']
-        to_account = tx['to']
-        
-        # Record writes
-        write_sets.append(to_account)
-        account_access[to_account]['writes'].add(tx['hash'])
-        
-        # Record reads
-        read_sets.append(from_account)
-        account_access[from_account]['reads'].add(tx['hash'])
-
-    # Detect conflicts
-    for account, accesses in account_access.items():
-        if accesses['reads'] and accesses['writes']:
-            conflicts.append(account)
-
-    return read_sets, write_sets, conflicts
 
 def fetch_and_save_blocks():
     """Fetch and save blocks from the latest to the earliest."""
     latest_block = web3.eth.block_number
     print(f"Starting from block: {latest_block}")
-    
-    n = 100000
 
-    for block_num in range(latest_block, latest_block-n, -1):
+    for block_num in range(latest_block, -1, -1):
         block_data = fetch_block(block_num)
         if block_data:
             save_block_to_ledger(block_data)
         time.sleep(0.1)
+
+
+def create_conflict_graph(block):
+    txs = block["transactions"]
+    # Initialize a graph
+    G = nx.Graph()
+
+    # Add nodes for each transaction
+    for transaction in txs:
+        G.add_node(transaction["hash"], **transaction)
+
+    # Check for conflicts and add edges
+    for i, t1 in enumerate(txs):
+        for j, t2 in enumerate(txs):
+            if i >= j:
+                continue  # Avoid duplicate pairs and self-loops
+
+            # Conflict if same source or destination with at least one write
+            if (
+                t1["from"] == t2["from"]
+                or t1["to"] == t2["to"]
+                or t1["from"] == t2["to"]
+                or t1["to"] == t2["from"]
+            ):
+                G.add_edge(t1["hash"], t2["hash"])
+    return G
+
+
+def graph_average_degree(graph):
+    num_edges = graph.number_of_edges()
+    num_nodes = graph.number_of_nodes()
+    if num_nodes == 0:
+        return 0.0  # Avoid division by zero if there are no nodes
+    avg_degree = (2 * num_edges) / num_nodes
+    return avg_degree
+
+
+def graph_has_cycle(graph):
+    try:
+        # Try to find cycles using depth-first search
+        cycle = nx.find_cycle(graph, orientation="original")
+        return True
+    except nx.NetworkXNoCycle:
+        return False
+
+
+def graph_longest_path_length(graph):
+    # Convert the undirected graph to a directed one by removing cycles
+    dag = nx.DiGraph()
+    dag.add_edges_from(graph.edges())
+
+    # Perform topological sorting
+    topo_order = list(nx.topological_sort(dag))
+
+    # Initialize distances to all nodes as negative infinity
+    distance = {node: float("-inf") for node in dag.nodes()}
+    # Distance to the starting node is 0
+    for node in topo_order:
+        if distance[node] == float("-inf"):
+            distance[node] = 0
+
+        for neighbor in dag.neighbors(node):
+            if distance[neighbor] < distance[node] + 1:
+                distance[neighbor] = distance[node] + 1
+
+    # The longest path length will be the maximum distance
+    if len(distance) == 0:
+        return 0
+    return max(distance.values())
+
+
+def plot_graph(graph):
+    plt.figure(figsize=(8, 6))
+    pos = nx.spring_layout(conflict_graph)  # positions for all nodes
+    nx.draw(conflict_graph, pos, arrows=True)
+    plt.title("Directed Graph Visualization")
+    plt.show()
+
 
 if __name__ == "__main__":
     if connect_to_ethereum_node():
@@ -129,21 +196,56 @@ if __name__ == "__main__":
         # fetch_and_save_blocks()
 
         # Load the existing ledger (if any)
-        blocks = [b for b in load_ledger()]
-        txs = sum([b["transactions"] for b in blocks], [])
-        read_set, write_set, conflicts = find_conflicts(txs)
-        G = txs_as_graph(txs[:1000])
 
-        #longest_path = nx.dag_longest_path(G)
-        #longest_path_length = len(longest_path) - 1  # Length is number of edges
-        #print(longest_path_length)
-        
-        # Draw the graph
-        plt.figure(figsize=(8, 6))
-        pos = nx.spring_layout(G)  # positions for all nodes
-        nx.draw(G, pos, arrows=True)
-        plt.title("Directed Graph Visualization")
+        data = []
+
+        for i, block in enumerate(load_ledger(100)):
+            conflict_graph = create_conflict_graph(block)
+            # plot_graph(conflict_graph)
+            coloring = nx.coloring.greedy_color(
+                conflict_graph, strategy="largest_first"
+            )
+            # The number of unique colors used is the length of the coloring dictionary
+            colors_count = len(set(coloring.values()))
+            avg_degree = graph_average_degree(conflict_graph)
+            count_transactions = len(block["transactions"])
+            longest_path_length = float("inf")
+            #if not graph_has_cycle(conflict_graph):
+            #    longest_path_length = graph_longest_path_length(conflict_graph)
+            results = {
+                "txs": count_transactions,
+                "degree": avg_degree,
+                "colors": colors_count,
+                # "longest_path": longest_path_length,
+            }
+            data.append(results)
+            print(i, results)
+
+        # Convert to DataFrame for easier manipulation
+        df = pd.DataFrame(data)
+
+        # Group by the number of transactions and calculate the average degree and colors
+        average_results = df.groupby('txs').agg(
+            avg_degree=('degree', 'mean'),
+            avg_colors=('colors', 'mean')
+        ).reset_index()
+
+        # Create a figure with two subplots
+        fig, axs = plt.subplots(1, 2, figsize=(10, 12))
+
+        # Plot average degree
+        axs[0].plot(average_results['txs'], average_results['avg_degree'], label='Average Degree', marker='o', color='blue')
+        axs[0].set_title('Average Degree vs Number of Transactions')
+        axs[0].set_xlabel('Number of Transactions')
+        axs[0].set_ylabel('Average Degree')
+        axs[0].grid(True)
+
+        # Plot average number of colors
+        axs[1].plot(average_results['txs'], average_results['avg_colors'], label='Average Colors', marker='o', color='orange')
+        axs[1].set_title('Average Colors vs Number of Transactions')
+        axs[1].set_xlabel('Number of Transactions')
+        axs[1].set_ylabel('Average Colors')
+        axs[1].grid(True)
+
+        # Adjust layout and show the plots
         plt.show()
-                        
-
-
