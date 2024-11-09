@@ -2,6 +2,7 @@ from matplotlib import pyplot as plt
 import pandas as pd
 from web3 import Web3
 import networkx as nx
+import multiprocessing as mp
 
 from collections import defaultdict
 import pickle
@@ -184,11 +185,31 @@ def graph_longest_path_length(graph):
 
 def plot_graph(graph):
     plt.figure(figsize=(8, 6))
-    pos = nx.spring_layout(conflict_graph)  # positions for all nodes
-    nx.draw(conflict_graph, pos, arrows=True)
+    pos = nx.spring_layout(graph)  # positions for all nodes
+    nx.draw(graph, pos, arrows=True)
     plt.title("Directed Graph Visualization")
     plt.show()
 
+def process_block(block):
+    """Process a single block and return results."""
+    conflict_graph = create_conflict_graph(block)
+    coloring = nx.coloring.greedy_color(conflict_graph, strategy="largest_first")
+    colors_count = len(set(coloring.values()))
+    avg_degree = graph_average_degree(conflict_graph)
+    count_transactions = len(block["transactions"])
+    
+    # longest_path_length = float("inf")
+    # Uncomment the following if you want to check for cycles and calculate the longest path
+    # if not graph_has_cycle(conflict_graph):
+    longest_path_length = graph_longest_path_length(conflict_graph)
+    
+    results = {
+        "txs": count_transactions,
+        "degree": avg_degree,
+        "colors": colors_count,
+        "path": longest_path_length,
+    }
+    return results
 
 if __name__ == "__main__":
     if connect_to_ethereum_node():
@@ -197,29 +218,24 @@ if __name__ == "__main__":
 
         # Load the existing ledger (if any)
 
-        data = []
+            data = []
 
-        for i, block in enumerate(load_ledger(100)):
-            conflict_graph = create_conflict_graph(block)
-            # plot_graph(conflict_graph)
-            coloring = nx.coloring.greedy_color(
-                conflict_graph, strategy="largest_first"
-            )
-            # The number of unique colors used is the length of the coloring dictionary
-            colors_count = len(set(coloring.values()))
-            avg_degree = graph_average_degree(conflict_graph)
-            count_transactions = len(block["transactions"])
-            longest_path_length = float("inf")
-            #if not graph_has_cycle(conflict_graph):
-            #    longest_path_length = graph_longest_path_length(conflict_graph)
-            results = {
-                "txs": count_transactions,
-                "degree": avg_degree,
-                "colors": colors_count,
-                # "longest_path": longest_path_length,
-            }
-            data.append(results)
-            print(i, results)
+    # Create a pool of worker processes
+    with mp.Pool(mp.cpu_count()) as pool:
+        # Use a list to store async results
+        async_results = []
+
+        # Load blocks from the ledger using the generator
+        for block in load_ledger(100000):
+            # Submit each block for processing
+            async_result = pool.apply_async(process_block, (block,))
+            async_results.append(async_result)
+
+        # Collect results as they complete
+        for i, async_result in enumerate(async_results):
+            result = async_result.get()  # This will block until the result is ready
+            data.append(result)
+            print(i, result)
 
         # Convert to DataFrame for easier manipulation
         df = pd.DataFrame(data)
@@ -227,17 +243,19 @@ if __name__ == "__main__":
         # Group by the number of transactions and calculate the average degree and colors
         average_results = df.groupby('txs').agg(
             avg_degree=('degree', 'mean'),
-            avg_colors=('colors', 'mean')
+            avg_colors=('colors', 'mean'),
+            avg_path = ('path', 'mean')
         ).reset_index()
 
         # Create a figure with two subplots
-        fig, axs = plt.subplots(1, 2, figsize=(10, 12))
+        fig, axs = plt.subplots(1, 3, figsize=(10, 12))
 
         # Plot average degree
         axs[0].plot(average_results['txs'], average_results['avg_degree'], label='Average Degree', marker='o', color='blue')
         axs[0].set_title('Average Degree vs Number of Transactions')
         axs[0].set_xlabel('Number of Transactions')
         axs[0].set_ylabel('Average Degree')
+        axs[0].set_yscale('log')
         axs[0].grid(True)
 
         # Plot average number of colors
@@ -245,7 +263,16 @@ if __name__ == "__main__":
         axs[1].set_title('Average Colors vs Number of Transactions')
         axs[1].set_xlabel('Number of Transactions')
         axs[1].set_ylabel('Average Colors')
+        axs[1].set_yscale('log')
         axs[1].grid(True)
+
+        # Plot average number of colors
+        axs[2].plot(average_results['txs'], average_results['avg_path'], label='Average Path', marker='o', color='green')
+        axs[2].set_title('Average Longest Path vs Number of Transactions')
+        axs[2].set_xlabel('Number of Transactions')
+        axs[2].set_ylabel('Average Longest Path')
+        axs[2].set_yscale('log')
+        axs[2].grid(True)
 
         # Adjust layout and show the plots
         plt.show()
