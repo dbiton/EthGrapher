@@ -45,13 +45,14 @@ def process_block(block):
     conflict_graph = create_conflict_graph(block)
     
     results = {
+        "hash": block["hash"],
         "txs": len(block["transactions"]),
         "degree": graph_average_degree(conflict_graph),
         "colors": graph_coloring(conflict_graph),
-        "assortativity": graph_assortativity(conflict_graph),
+        # "assortativity": graph_assortativity(conflict_graph),
         "cluster_coe": graph_cluster_coe(conflict_graph),
         "density": graph_density(conflict_graph),
-        "edge_con": graph_edge_connectivity(conflict_graph),
+        # "edge_con": graph_edge_connectivity(conflict_graph),
         "modularity": graph_modularity(conflict_graph),
         "transitivity": graph_transitivity(conflict_graph),
         "diameter": graph_diameter(conflict_graph)
@@ -67,7 +68,7 @@ if __name__ == "__main__":
         async_results = []
 
         # Load blocks from the ledger using the generator
-        for block in load_ledger(1000):
+        for block in load_ledger(100000):
             # Submit each block for processing
             async_result = pool.apply_async(process_block, (block,))
             async_results.append(async_result)
@@ -78,10 +79,12 @@ if __name__ == "__main__":
             data.append(result)
             print(i, result)
 
-        props = list([k for k in data[0].keys() if k != "txs"])
+        props = list([k for k in data[0].keys() if k != "txs" and k != "hash"])
 
         # Convert to DataFrame for easier manipulation
         df = pd.DataFrame(data)
+
+        df.to_csv("eth_stats.csv", index=False)
 
         agg_dict = {f'avg_{key}': (key, 'mean') for key in props}
 
