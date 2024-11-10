@@ -4,26 +4,30 @@ import time
 from web3 import Web3
 
 
-public_node_url = "https://cloudflare-eth.com"
+public_nodes_urls = [
+    "https://cloudflare-eth.com",
+    "https://rpc.ankr.com/eth",
+    "https://eth-mainnet.public.blastapi.io"
+]
 
-# Connect to the public Ethereum node
-web3 = Web3(Web3.HTTPProvider(public_node_url))
+eth_clients = [Web3(Web3.HTTPProvider(url)) for url in public_nodes_urls]
+
 
 # File to store the ledger (in binary pickle format)
-ledger_file = "ethereum_ledger_100K.pkl"
+ledger_file = "ethereum_ledger.pkl"
 
 
-def connect_to_ethereum_node():
+def connect_to_ethereum_node(web3):
     """Connect to the Ethereum node and return the Web3 instance."""
     if web3.is_connected():
-        print("Connected to the Ethereum node")
+        print("Connected to Ethereum node")
         return True
     else:
         print("Connection failed")
         return False
 
 
-def fetch_block(block_num):
+def fetch_block(web3, block_num):
     """Fetch a block by its number and return the block details."""
     try:
         block_details = web3.eth.get_block(block_num, full_transactions=True)
@@ -86,13 +90,12 @@ def load_ledger(limit=None):
 
 
 def fetch_and_save_blocks():
-    if not connect_to_ethereum_node():
-      raise Exception("connection failed")
-    latest_block = web3.eth.block_number
-    print(f"Starting from block: {latest_block}")
-
-    for block_num in range(latest_block, -1, -1):
-        block_data = fetch_block(block_num)
+    for client in eth_clients:
+        if not connect_to_ethereum_node(client):
+            raise Exception("connection failed")
+    
+    for block_num in range(20100000, 20200000, 1):
+        block_data = fetch_block(eth_clients[block_num%len(eth_clients)], block_num)
         if block_data:
             save_block_to_ledger(block_data)
-        time.sleep(0.1)
+        # time.sleep(0.1)

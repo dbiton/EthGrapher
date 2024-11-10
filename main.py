@@ -101,6 +101,7 @@ if __name__ == "__main__":
         ax.set_title(f'{key.capitalize()}')
         ax.set_xlabel('Number of Transactions')
         ax.set_ylabel(f'Average {key}')
+        ax.set_scale('log')
         ax.grid(True)
         
         # Display the plot
