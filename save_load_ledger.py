@@ -28,7 +28,7 @@ def connect_to_ethereum_node(web3):
         return False
 
 def has_field(tx, field):
-    return field in tx and tx[field] != '0x' and tx[field] != None
+    return field in tx and tx[field] != b'' and tx[field] != None
 
 def is_smart_contract_deployment(tx):
     return has_field(tx, "input") and not has_field(tx, 'to')
@@ -37,7 +37,7 @@ def is_smart_contract_interaction(tx):
     return has_field(tx, "input") and has_field(tx, 'to')
 
 def fetch_receipt(tx):
-    web3 = random.sample(eth_clients)
+    web3 = random.choice(eth_clients)
     tx_hash = tx['hash']
     return web3.eth.get_transaction_receipt(tx_hash)
 
@@ -77,7 +77,6 @@ def extract_params_as_addresses(tx):
     return addresses
 
 def fetch_block(web3, block_num):
-    """Fetch a block by its number and return the block details."""
     try:
         block_details = web3.eth.get_block(block_num, full_transactions=True)
         block_data = {
