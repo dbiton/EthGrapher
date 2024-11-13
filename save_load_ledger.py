@@ -1,5 +1,6 @@
 import os
 import pickle
+import random
 import time
 from web3 import Web3
 
@@ -26,6 +27,54 @@ def connect_to_ethereum_node(web3):
         print("Connection failed")
         return False
 
+def has_field(tx, field):
+    return field in tx and tx[field] != '0x' and tx[field] != None
+
+def is_smart_contract_deployment(tx):
+    return has_field(tx, "input") and not has_field(tx, 'to')
+
+def is_smart_contract_interaction(tx):
+    return has_field(tx, "input") and has_field(tx, 'to')
+
+def fetch_receipt(tx):
+    web3 = random.sample(eth_clients)
+    tx_hash = tx['hash']
+    return web3.eth.get_transaction_receipt(tx_hash)
+
+def get_write_addresses(tx_receipt):
+    write_addresses = [log['address'] for log in tx_receipt['logs']]
+    return write_addresses
+
+def estimate_read_addresses(tx, write_addresses):
+    all_addresses = extract_params_as_addresses(tx)
+    write_addresses = filter(lambda v: v not in write_addresses, all_addresses)
+    return list(write_addresses)
+
+def extract_params_as_addresses(tx):
+    input_data = tx['input']
+    if input_data.startswith('0x'):
+        input_data = input_data[2:]
+    
+    if len(input_data) % 64 != 0:
+        raise ValueError("Input data length is not valid. It should be a multiple of 32 bytes.")
+    
+    w3 = Web3()
+
+    function_selector = input_data[:8]
+    parameter_data = input_data[8:]
+    
+    addresses = []
+    
+    for i in range(0, len(parameter_data), 64):
+        chunk = parameter_data[i:i+64]
+        
+        potential_address = '0x' + chunk[-40:]
+        
+        if w3.isAddress(potential_address):
+            checksummed_address = w3.toChecksumAddress(potential_address)
+            addresses.append(checksummed_address)
+    
+    return addresses
 
 def fetch_block(web3, block_num):
     """Fetch a block by its number and return the block details."""
