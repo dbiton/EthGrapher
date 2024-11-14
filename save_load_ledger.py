@@ -16,7 +16,7 @@ eth_clients = [Web3(Web3.HTTPProvider(url)) for url in public_nodes_urls]
 
 # File to store the ledger (in binary pickle format)
 ledger_file = "ethereum_ledger.pkl"
-
+receipt_file = "recepit.pkl"
 
 def connect_to_ethereum_node(web3):
     """Connect to the Ethereum node and return the Web3 instance."""
@@ -51,30 +51,30 @@ def estimate_read_addresses(tx, write_addresses):
     return list(write_addresses)
 
 def extract_params_as_addresses(tx):
-    input_data = tx['input']
+    input_data = tx['input'].hex()
     if input_data.startswith('0x'):
         input_data = input_data[2:]
-    
-    if len(input_data) % 64 != 0:
-        raise ValueError("Input data length is not valid. It should be a multiple of 32 bytes.")
     
     w3 = Web3()
 
     function_selector = input_data[:8]
     parameter_data = input_data[8:]
-    
+
     addresses = []
     
     for i in range(0, len(parameter_data), 64):
         chunk = parameter_data[i:i+64]
         
-        potential_address = '0x' + chunk[-40:]
-        
-        if w3.isAddress(potential_address):
-            checksummed_address = w3.toChecksumAddress(potential_address)
-            addresses.append(checksummed_address)
+        if len(chunk) >= 40:
+            potential_address = '0x' + chunk[-40:]
+            
+            # Verify and add the checksummed address
+            if w3.is_address(potential_address):
+                checksummed_address = w3.to_checksum_address(potential_address)
+                addresses.append(checksummed_address)
     
     return addresses
+
 
 def fetch_block(web3, block_num):
     try:
@@ -113,6 +113,23 @@ def save_block_to_ledger(block_data):
         f"Saved block {block_data['number']} with {len(block_data['transactions'])} transactions."
     )
 
+
+def load_receipts(block_number):
+    receipts = []
+    if os.path.exists(receipt_file):
+        with open(receipt_file, "rb") as f:
+            try:
+                while True:
+                    curr_block_number, tx_hash, receipt = pickle.load(f)
+                    if curr_block_number < block_number:
+                        continue
+                    if curr_block_number > block_number:
+                        return receipts 
+                    receipts.append((tx_hash, receipt))
+            except EOFError:
+                pass  # End of file reached
+    else:
+        print("No ledger file found.")
 
 def load_ledger(limit=None):
     """Load the ledger from the file if it exists."""
