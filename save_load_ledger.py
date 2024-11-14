@@ -15,8 +15,8 @@ eth_clients = [Web3(Web3.HTTPProvider(url)) for url in public_nodes_urls]
 
 
 # File to store the ledger (in binary pickle format)
-ledger_file = "ethereum_ledger.pkl"
-receipt_file = "recepit.pkl"
+ledger_file = "eth_209_to_210.pkl"
+receipt_file = "recepit_209_to_210.pkl"
 
 def connect_to_ethereum_node(web3):
     """Connect to the Ethereum node and return the Web3 instance."""
@@ -164,3 +164,17 @@ def fetch_and_save_blocks():
         if block_data:
             save_block_to_ledger(block_data)
         # time.sleep(0.1)
+
+def fetch_and_save_recepits():
+    for client in eth_clients:
+        if not connect_to_ethereum_node(client):
+            raise Exception("connection failed")
+    
+    for block in load_ledger():
+        print("block", block['number'])
+        with open(receipt_file, "ab") as f:
+            for i, tx in enumerate(block['transactions']):
+                if is_smart_contract_interaction(tx) or is_smart_contract_deployment(tx):
+                    receipt = fetch_receipt(tx)
+                    pickle.dump(receipt, f)
+                    print(f"{i}/{len(block['transactions'])}")
