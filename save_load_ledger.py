@@ -1,22 +1,23 @@
 import os
 import pickle
-import random
 import time
 from web3 import Web3
-
+import queue
 
 public_nodes_urls = [
     "https://cloudflare-eth.com",
     "https://rpc.ankr.com/eth",
-    "https://eth-mainnet.public.blastapi.io"
+    "https://eth-mainnet.public.blastapi.io",
 ]
 
 eth_clients = [Web3(Web3.HTTPProvider(url)) for url in public_nodes_urls]
-
+eth_clients_queue = queue.Queue()
+for eth_client in eth_clients:
+    eth_clients_queue.put(eth_client)
 
 # File to store the ledger (in binary pickle format)
-ledger_file = "eth_209_to_210.pkl"
-receipt_file = "recepit_209_to_210.pkl"
+ledger_file = "eth_200_to_201.pkl"
+receipt_file = "rec_20000196_20000472.pkl"
 
 def connect_to_ethereum_node(web3):
     """Connect to the Ethereum node and return the Web3 instance."""
@@ -36,10 +37,16 @@ def is_smart_contract_deployment(tx):
 def is_smart_contract_interaction(tx):
     return has_field(tx, "input") and has_field(tx, 'to')
 
-def fetch_receipt(tx):
-    web3 = random.choice(eth_clients)
-    tx_hash = tx['hash']
-    return web3.eth.get_transaction_receipt(tx_hash)
+def fetch_receipt(tx_hash):
+    result = None
+    web3 = eth_clients_queue.get()
+    try:
+        result = web3.eth.get_transaction_receipt(tx_hash)
+    except Exception as e:
+        print(f"Error fetching receipt {tx_hash}: {str(e)}")
+    time.sleep(0.1)
+    eth_clients_queue.put(web3)
+    return result
 
 def get_write_addresses(tx_receipt):
     write_addresses = [log['address'] for log in tx_receipt['logs']]
@@ -76,8 +83,9 @@ def extract_params_as_addresses(tx):
     return addresses
 
 
-def fetch_block(web3, block_num):
+def fetch_block(block_num):
     try:
+        web3 = eth_clients_queue.get()
         block_details = web3.eth.get_block(block_num, full_transactions=True)
         block_data = {
             "number": block_details.number,
@@ -99,6 +107,8 @@ def fetch_block(web3, block_num):
                 for tx in block_details.transactions
             ],
         }
+        time.sleep(0.1)
+        eth_clients_queue.put(web3)
         return block_data
     except Exception as e:
         print(f"Error fetching block {block_num}: {str(e)}")
@@ -153,28 +163,48 @@ def load_ledger(limit=None):
     else:
         print("No ledger file found.")
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
 
 def fetch_and_save_blocks():
     for client in eth_clients:
         if not connect_to_ethereum_node(client):
             raise Exception("connection failed")
     
-    for block_num in range(20100000, 20200000, 1):
-        block_data = fetch_block(eth_clients[block_num%len(eth_clients)], block_num)
-        if block_data:
-            save_block_to_ledger(block_data)
-        # time.sleep(0.1)
+    futures = []
+    with ThreadPoolExecutor() as executor:
+        futures = [executor.submit(fetch_block, block_num) for block_num in range(20091474, 20100000, 1)]
+
+        for future in as_completed(futures):
+            block_data = future.result()
+            if block_data:
+                save_block_to_ledger(block_data)
+
 
 def fetch_and_save_recepits():
     for client in eth_clients:
         if not connect_to_ethereum_node(client):
             raise Exception("connection failed")
-    
-    for block in load_ledger():
-        print("block", block['number'])
-        with open(receipt_file, "ab") as f:
-            for i, tx in enumerate(block['transactions']):
-                if is_smart_contract_interaction(tx) or is_smart_contract_deployment(tx):
-                    receipt = fetch_receipt(tx)
+
+    start = 20002000
+    end = 20100000
+    step = 1000
+    for curr in range(start, end, step):
+        with ThreadPoolExecutor() as executor:
+            futures = []
+            for block in load_ledger():
+                if block['number'] <= curr:
+                    continue
+                if block['number'] >= curr + step:
+                    break
+                for i, tx in enumerate(block['transactions']):
+                    if is_smart_contract_interaction(tx) or is_smart_contract_deployment(tx):
+                        futures.append(executor.submit(fetch_receipt, tx["hash"]))
+                        print(f"{block['number']} submitted {i}/{len(block['transactions'])}")
+
+            with open(receipt_file, "ab") as f:
+                print("writing to file...")
+                for future in as_completed(futures):
+                    receipt = future.result()
+                    print(receipt["blockNumber"])
                     pickle.dump(receipt, f)
-                    print(f"{i}/{len(block['transactions'])}")
