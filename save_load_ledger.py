@@ -8,6 +8,8 @@ public_nodes_urls = [
     "https://cloudflare-eth.com",
     "https://rpc.ankr.com/eth",
     "https://eth-mainnet.public.blastapi.io",
+    "https://mainnet.infura.io/v3/61c26b521ed84355864460361fc8ca52",
+    "https://eth-mainnet.g.alchemy.com/v2/LXa59vi3WiXQzdnd469is-WafCkdDDss"
 ]
 
 eth_clients = [Web3(Web3.HTTPProvider(url)) for url in public_nodes_urls]
