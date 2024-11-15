@@ -7,27 +7,31 @@ from save_load_ledger import *
 from graph_stats import *
 
 
-def create_conflict_graph(block):
+def create_conflict_graph(block, additional_ops):
     txs = block["transactions"]
     # Initialize a graph
     G = nx.Graph()
 
+    for tx in txs:
+        G.add_node(tx['hash'])
+
+    ops = additional_ops
+
     # Add nodes for each transaction
-    for transaction in txs:
-        G.add_node(transaction["hash"], **transaction)
+    for tx in txs:
+        ops.append({"hash": tx['hash'], "data": tx['from'], "op": 'write'})
+        ops.append({"hash": tx['hash'], "data": tx['to'], "op": 'write'})
 
     # Check for conflicts and add edges
-    for i, t1 in enumerate(txs):
-        for j, t2 in enumerate(txs):
-            if i >= j:
+    for i, t1 in enumerate(ops):
+        for j, t2 in enumerate(ops):
+            if t1["hash"] == t2["hash"]:
                 continue  # Avoid duplicate pairs and self-loops
 
             # Conflict if same source or destination with at least one write
             if (
-                t1["from"] == t2["from"]
-                or t1["to"] == t2["to"]
-                or t1["from"] == t2["to"]
-                or t1["to"] == t2["from"]
+                t1["data"] == t2["data"]
+                and (t1["op"] == "write" and t2["op"] == "write")
             ):
                 G.add_edge(t1["hash"], t2["hash"])
     return G
@@ -59,7 +63,77 @@ def process_block(block):
     }
     return results
 
-if __name__ == "__main__":
+def main():
+    '''
+    receipts = []
+    with open("recepit_209_to_210_next.pkl", "rb") as f:
+        while True:
+            try:
+                receipt = pickle.load(f)
+                receipts.append(receipt)
+            except EOFError:
+                break
+    x = 3
+    '''
+    
+    fetch_and_save_recepits()
+    # return
+    '''
+    start = 20000000
+    end = 20100000
+
+    numbers_set = set()
+    full_range = set(range(start, end))
+    for block in load_ledger():
+        block_number = block['number']
+        numbers_set.add(block_number)
+        print(block_number)
+    
+    missing_numbers = full_range - numbers_set
+    print(sorted(missing_numbers))
+    print(len(missing_numbers))
+
+    # fetch_and_save_blocks()
+    '''
+    return
+
+    i = 20000000
+    with open("fixed.pkl", "ab") as ff:
+        for block in load_ledger():
+            block_number = block['number']
+            print(block_number, i)
+            for j in range(i, block_number):
+                b = fetch_block(random.choice(eth_clients), j)
+                i += 1
+                pickle.dump(b, ff)
+            if block_number == i:
+                pickle.dump(block, ff)
+            else:
+                return
+            i += 1
+    return
+    
+
+    with open("recepit.pkl", "ab") as f:
+        for block in load_ledger(2):
+            additional_ops = []
+            receipts = load_receipts(block['number'])
+            for tx in block['transactions']:
+                if is_smart_contract_interaction(tx):
+                    tx_rs = [r for h,r in receipts if h == tx['hash']]
+                    receipts_write_addresses = list([get_write_addresses(receipt) for receipt in tx_rs])
+                    write_addresses = list(set(sum(receipts_write_addresses, [])))
+                    read_addresses = estimate_read_addresses(tx, write_addresses)
+                    additional_ops += [{"hash" :tx['hash'], "data": addr, "op": 'write'} for addr in write_addresses]
+                    additional_ops += [{"hash" :tx['hash'], "data": addr, "op": 'read'} for addr in read_addresses]
+                else:
+                    continue
+            G = create_conflict_graph(block, additional_ops)
+            x = 3
+            plt.figure(figsize=(8, 6))  # Set the figure size
+            nx.draw(G)
+            plt.show()
+    return
     data = []
     
     # Create a pool of worker processes
@@ -112,3 +186,7 @@ if __name__ == "__main__":
         
         # Close the figure to free up memory
         plt.close(fig)
+
+
+if __name__ == "__main__":
+    main()
