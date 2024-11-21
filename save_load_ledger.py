@@ -1,6 +1,7 @@
 import os
 import pickle
 import time
+import requests
 from web3 import Web3
 import queue
 
@@ -9,8 +10,11 @@ public_nodes_urls = [
     "https://rpc.ankr.com/eth",
     "https://eth-mainnet.public.blastapi.io",
     "https://mainnet.infura.io/v3/61c26b521ed84355864460361fc8ca52",
-    "https://eth-mainnet.g.alchemy.com/v2/LXa59vi3WiXQzdnd469is-WafCkdDDss"
+    "https://eth-mainnet.g.alchemy.com/v2/LXa59vi3WiXQzdnd469is-WafCkdDDss",
+    "https://ethereum-mainnet.core.chainstack.com/4033397d5b35d9414e7039efbdae0d45"
 ]
+
+CHAINSTACK_RPC_URL = "https://ethereum-mainnet.core.chainstack.com/4033397d5b35d9414e7039efbdae0d45"
 
 eth_clients = [Web3(Web3.HTTPProvider(url)) for url in public_nodes_urls]
 eth_clients_queue = queue.Queue()
@@ -182,6 +186,19 @@ def fetch_and_save_blocks():
             if block_data:
                 save_block_to_ledger(block_data)
 
+def fetch_tx_trace(tx_hash):
+    """Trace a transaction to get read/write addresses."""
+    payload = {
+        "jsonrpc": "2.0",
+        "method": "debug_traceTransaction",
+        "params": [tx_hash, {"tracer": "callTracer"}],
+        "id": 1
+    }
+    response = requests.post(CHAINSTACK_RPC_URL, json=payload)
+    if response.status_code == 200:
+        return response.json()
+    else:
+        raise Exception(f"Error tracing transaction: {response.text}")
 
 def fetch_and_save_recepits():
     for client in eth_clients:
@@ -210,3 +227,14 @@ def fetch_and_save_recepits():
                     receipt = future.result()
                     print(receipt["blockNumber"])
                     pickle.dump(receipt, f)
+
+def sort_blocks():
+    blocks = []
+    for block in load_ledger():
+        blocks.append(block)
+    blocks.sort(key=lambda block: block["number"])
+    with open("sorted.pkl", "ab") as f:
+        print("writing to file...")
+        for block in blocks:
+            print(block["number"])
+            pickle.dump(block, f)
