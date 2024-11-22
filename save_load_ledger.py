@@ -24,6 +24,7 @@ for eth_client in eth_clients:
 # File to store the ledger (in binary pickle format)
 ledger_file = "eth_200_to_201.pkl"
 receipt_file = "rec_20000196_20000472.pkl"
+blocks_traces_file = "block_traces.pkl"
 
 def connect_to_ethereum_node(web3):
     """Connect to the Ethereum node and return the Web3 instance."""
@@ -148,6 +149,22 @@ def load_receipts(block_number):
         print("No ledger file found.")
 
 
+def load_blocks_traces(limit=None):
+    i = 0
+    if os.path.exists(blocks_traces_file):
+        with open(blocks_traces_file, "rb") as f:
+            try:
+                while True:
+                    block_number, block_trace = pickle.load(f)
+                    i += 1
+                    if i == limit:
+                        return
+                    print(f"Loaded block {block_number}")
+                    yield block_number, block_trace
+            except EOFError:
+                pass  # End of file reached
+    else:
+        print("No traces file found.")
 
 def load_ledger(limit=None):
     """Load the ledger from the file if it exists."""
