@@ -7,15 +7,25 @@ from save_load_ledger import *
 from graph_stats import *
 
 def process_call(call, reads, writes):
+    # Handle STATICCALL: Read-only call
     if call["type"] == "STATICCALL":
         reads.add(call["to"])
 
-    if call["type"] in {"CALL", "CREATE", "DELEGATECALL"}:
-        writes.add(call["to"])
-        if "value" in call and int(call["value"], 16) > 0:
-            writes.add(call["to"])  # Transfers are writes
-        writes.add(call["from"])  # Contract making the call might write its own state
+    # Handle CALL, CREATE, and DELEGATECALL
+    elif call["type"] in {"CALL", "CREATE", "DELEGATECALL"}:
+        # DELEGATECALL writes to the caller's context, not `to`
+        if call["type"] == "DELEGATECALL":
+            writes.add(call["from"])
+        else:
+            writes.add(call["to"])
 
+        # Value transfer always indicates a write to the recipient
+        if "value" in call and int(call["value"], 16) > 0:
+            writes.add(call["to"])
+
+        # The caller may also modify its own state
+        writes.add(call["from"])
+    
     if "calls" in call:
         for sub_call in call["calls"]:
             process_call(sub_call, reads, writes)
@@ -101,13 +111,13 @@ def process_block(block_number, block_trace):
         "txs": len(block_trace),
         "degree": graph_average_degree(conflict_graph),
         "colors": graph_coloring(conflict_graph),
-        # "assortativity": graph_assortativity(conflict_graph),
+        "assortativity": graph_assortativity(conflict_graph),
         "cluster_coe": graph_cluster_coe(conflict_graph),
         "density": graph_density(conflict_graph),
-        # "edge_con": graph_edge_connectivity(conflict_graph),
         "modularity": graph_modularity(conflict_graph),
         "transitivity": graph_transitivity(conflict_graph),
-        "diameter": graph_diameter(conflict_graph)
+        "diameter": graph_diameter(conflict_graph),
+        "conflict_percentage": graph_conflict_percentage(conflict_graph)
     }
     return results
 
@@ -119,7 +129,7 @@ def process_blocks_traces():
         async_results = []
 
         # Load blocks from the ledger using the generator
-        for block_number, block_trace in load_blocks_traces(100):
+        for block_number, block_trace in load_blocks_traces():
             # Submit each block for processing
             async_result = pool.apply_async(process_block, (block_number, block_trace,))
             async_results.append(async_result)
