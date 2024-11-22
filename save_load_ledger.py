@@ -147,6 +147,8 @@ def load_receipts(block_number):
     else:
         print("No ledger file found.")
 
+
+
 def load_ledger(limit=None):
     """Load the ledger from the file if it exists."""
     i = 0
@@ -186,7 +188,27 @@ def fetch_and_save_blocks():
             if block_data:
                 save_block_to_ledger(block_data)
 
-def fetch_tx_trace(tx_hash):
+
+def fetch_block_trace(block_number):
+    payload = {
+        "jsonrpc": "2.0",
+        "method": "debug_traceBlockByNumber",
+        "params": [
+            hex(block_number),
+            {"tracer": "callTracer"}
+        ],
+        "id": 1
+    }
+    response = requests.post(CHAINSTACK_RPC_URL, json=payload)
+    
+    if response.status_code == 200:
+        return response.json()["result"]
+    else:
+        print(f"Error tracing block: {response.text}")
+
+
+def fetch_tx_trace(tx):
+    tx_hash = f"0x{tx['hash']}"
     """Trace a transaction to get read/write addresses."""
     payload = {
         "jsonrpc": "2.0",
