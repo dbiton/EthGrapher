@@ -119,7 +119,6 @@ def fetch_block(block_num):
         return block_data
     except Exception as e:
         print(f"Error fetching block {block_num}: {str(e)}")
-        return None
 
 
 def save_block_to_ledger(block_data):
@@ -207,21 +206,24 @@ def fetch_and_save_blocks():
 
 
 def fetch_block_trace(block_number):
-    payload = {
-        "jsonrpc": "2.0",
-        "method": "debug_traceBlockByNumber",
-        "params": [
-            hex(block_number),
-            {"tracer": "callTracer"}
-        ],
-        "id": 1
-    }
-    response = requests.post(CHAINSTACK_RPC_URL, json=payload)
-    
-    if response.status_code == 200:
-        return response.json()["result"]
-    else:
-        print(f"Error tracing block: {response.text}")
+    try:
+        payload = {
+            "jsonrpc": "2.0",
+            "method": "debug_traceBlockByNumber",
+            "params": [
+                hex(block_number),
+                {"tracer": "callTracer"}
+            ],
+            "id": 1
+        }
+        response = requests.post(CHAINSTACK_RPC_URL, json=payload)
+        
+        if response.status_code == 200:
+            return response.json()["result"]
+        else:
+            print(f"Error tracing block: {response.text}")
+    except Exception as e:
+        print(f"Error tracing block: {e}")
 
 
 def fetch_tx_trace(tx):
