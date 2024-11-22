@@ -108,7 +108,7 @@ def process_block(block_number, block_trace):
     
     results = {
         "blockNumber": block_number,
-        "txs": len(block_trace),
+        "conflict_percentage": len(block_trace),
         "degree": graph_average_degree(conflict_graph),
         "colors": graph_coloring(conflict_graph),
         "assortativity": graph_assortativity(conflict_graph),
@@ -117,9 +117,56 @@ def process_block(block_number, block_trace):
         "modularity": graph_modularity(conflict_graph),
         "transitivity": graph_transitivity(conflict_graph),
         "diameter": graph_diameter(conflict_graph),
-        "conflict_percentage": graph_conflict_percentage(conflict_graph)
+        "txs": graph_conflict_percentage(conflict_graph)
     }
     return results
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.interpolate import griddata
+
+def plot_data():
+    # Load the CSV file
+    file_path = "eth_stats.csv"  # Replace with your file path
+    data = pd.read_csv(file_path)
+
+    # Ensure the data has X, Y, and other columns
+    if "conflict_percentage" not in data.columns or "txs" not in data.columns:
+        raise ValueError("The CSV file must contain 'X' and 'Y' columns.")
+
+    # Extract X, Y, and property columns
+    x = data["conflict_percentage"]
+    y = data["txs"]
+    properties = data.drop(columns=["conflict_percentage", "txs"]).columns
+
+    # Create heatmaps for each property
+    for prop in properties:
+        z = data[prop]
+
+        # Create a grid for interpolation
+        grid_x, grid_y = np.linspace(x.min(), x.max(), 100), np.linspace(y.min(), y.max(), 100)
+        grid_x, grid_y = np.meshgrid(grid_x, grid_y)
+
+        # Interpolate the data
+        grid_z = griddata((x, y), z, (grid_x, grid_y), method='cubic')
+
+        # Plot the heatmap
+        plt.figure(figsize=(8, 6))
+        plt.contourf(grid_x, grid_y, grid_z, levels=10, cmap="viridis")
+        plt.colorbar(label=prop)
+        plt.scatter(x, y, c=z, cmap="viridis", edgecolor="k", alpha=0.5, label="Data Points")
+        plt.title(f"Heatmap of {prop}")
+        plt.xlabel("conflict_percentage")
+        plt.ylabel("txs")
+        plt.legend()
+        plt.tight_layout()
+
+        # Save the plot
+        plt.savefig(f"heatmap_{prop}.png")
+        plt.close()
+
+    print("Heatmaps have been generated and saved as PNG files.")
 
 def process_blocks_traces():
     data = []
@@ -140,7 +187,7 @@ def process_blocks_traces():
             data.append(result)
             print(i, result)
 
-        props = list([k for k in data[0].keys() if k != "txs" and k != "hash"])
+        props = list([k for k in data[0].keys() if k != "conflict_percentage" and k != "hash"])
 
         # Convert to DataFrame for easier manipulation
         df = pd.DataFrame(data)
@@ -175,7 +222,7 @@ def process_blocks_traces():
         plt.close(fig)
 
 def main():
-    process_blocks_traces()
+    plot_data()
 
 
 if __name__ == "__main__":
