@@ -1,3 +1,4 @@
+from itertools import permutations
 import networkx as nx
 from networkx.algorithms.community import greedy_modularity_communities
 
@@ -20,9 +21,9 @@ def graph_cluster_coe(graph):
         print(f"Exception in graph_cluster_coe: {e}")
         return float('nan')
 
-def graph_coloring(graph):
+def graph_greedy_coloring(graph):
     try:
-        coloring = nx.coloring.greedy_color(graph)
+        coloring = nx.coloring.greedy_color(graph, strategy="DSATUR")
         return len(set(coloring.values()))
     except Exception as e:
         print(f"Exception in graph_coloring: {e}")
@@ -79,4 +80,42 @@ def graph_conflict_percentage(G):
         return percentage_conflicts
     except Exception as e:
         print(f"Exception in graph_conflict_percentage: {e}")
+        return float('nan')
+
+def graph_longest_path_length(graph):
+    try:
+        # Get all nodes in the graph
+        nodes = list(graph.nodes())
+        max_length = 0
+        
+        # Iterate over all possible permutations of nodes
+        for perm in permutations(nodes):
+            length = 0
+            valid_path = True
+            for i in range(len(perm) - 1):
+                if graph.has_edge(perm[i], perm[i+1]):
+                    length += graph[perm[i]][perm[i+1]].get('weight', 1)  # Use weight if present, otherwise 1
+                else:
+                    valid_path = False
+                    break
+            if valid_path:
+                max_length = max(max_length, length)
+        
+        return max_length
+    except Exception as e:
+        print(f"Exception in graph_longest_path_length: {e}")
+        return float('nan')
+
+
+def graph_clique(graph):
+    try:
+         # Find all maximal cliques
+        maximal_cliques = nx.find_cliques(graph)
+        
+        # Determine the size of the largest clique
+        max_clique_size = max(len(clique) for clique in maximal_cliques)
+        
+        return max_clique_size
+    except Exception as e:
+        print(f"Exception in graph_clique_number: {e}")
         return float('nan')
