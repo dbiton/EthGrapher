@@ -128,8 +128,8 @@ import matplotlib.pyplot as plt
 from scipy.interpolate import griddata
 
 def plot_data():
-    lines_count = 4
-    bins_count = 32
+    lines_count = 5
+    bins_count = 64
 
     # Load the CSV file
     file_path = "eth_stats.csv"  # Replace with your file path
@@ -147,12 +147,16 @@ def plot_data():
     # Create heatmaps for each property
     for prop in properties:
         plt.figure(figsize=(8, 6))
-        for i_tx_group, tx_group in enumerate(split_values):
+        for i_tx_group in range(len(split_values) + 1):
             if i_tx_group == 0:
                 txs_min = 0
+                txs_max = split_values[i_tx_group]
+            elif i_tx_group == len(split_values):
+                txs_min = split_values[i_tx_group - 1]
+                txs_max = float('inf')
             else:
                 txs_min = split_values[i_tx_group - 1]
-            txs_max = tx_group
+                txs_max = split_values[i_tx_group]
 
             # Select the data for the current tx_group
             df_group = df.loc[(df["txs"] < txs_max) & (df["txs"] > txs_min)].sort_values(by=prop)
@@ -174,7 +178,7 @@ def plot_data():
             sem_conflict = grouped['conflict_percentage'].sem()  # Standard Error of the Mean
             
             # Plot mean conflict_percentage with confidence intervals
-            plt.plot(mean_prop_data, mean_conflict, label=f"{int(tx_group)} txs")
+            plt.plot(mean_prop_data, mean_conflict, label=f"#txs>{int(txs_min)}")
             plt.fill_between(mean_prop_data,
                             mean_conflict - sem_conflict,
                             mean_conflict + sem_conflict,
