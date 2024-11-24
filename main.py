@@ -128,33 +128,64 @@ import matplotlib.pyplot as plt
 from scipy.interpolate import griddata
 
 def plot_data():
+    lines_count = 4
+    bins_count = 32
+
     # Load the CSV file
     file_path = "eth_stats.csv"  # Replace with your file path
-    data = pd.read_csv(file_path)
+    df = pd.read_csv(file_path)
 
     # Ensure the data has X, Y, and other columns
-    if "conflict_percentage" not in data.columns or "txs" not in data.columns:
+    if "conflict_percentage" not in df.columns or "txs" not in df.columns:
         raise ValueError("The CSV file must contain 'X' and 'Y' columns.")
 
     # Extract X, Y, and property columns
-    conflict_percentage = data["conflict_percentage"]
-    tx_count = data["txs"]
-    properties = data.drop(columns=["conflict_percentage", "txs"]).columns
-
+    properties = df.drop(columns=["conflict_percentage", "txs"]).columns
+    
+    split_values = df["txs"].quantile([i / (lines_count + 1) for i in range(1, lines_count + 1)])
+    split_values = sorted(list(split_values))
     # Create heatmaps for each property
     for prop in properties:
-        prop_data = data[prop]
-
-        # Plot the heatmap
         plt.figure(figsize=(8, 6))
-        scatter = plt.scatter(conflict_percentage, prop_data, c=tx_count, cmap='hsv', alpha=0.2, edgecolors='none', s=10)
-        colorbar = plt.colorbar(scatter)
-        colorbar.set_label('tx count')
+        for i_tx_group, tx_group in enumerate(split_values):
+            if i_tx_group == 0:
+                txs_min = 0
+            else:
+                txs_min = split_values[i_tx_group - 1]
+            txs_max = tx_group
+
+            # Select the data for the current tx_group
+            df_group = df.loc[(df["txs"] < txs_max) & (df["txs"] > txs_min)].sort_values(by=prop)
+            
+            # Copy to avoid SettingWithCopyWarning
+            df_group = df_group.copy()
+            
+            prop_data = df_group[prop]
+            conflict_percentage = df_group["conflict_percentage"]
+            
+            # Bin the 'prop' data
+            bins = np.linspace(prop_data.min(), prop_data.max(), num=bins_count)  # Adjust 'num' for bin granularity
+            df_group['prop_bin'] = pd.cut(prop_data, bins=bins, include_lowest=True)
+            
+            # Group by the bins and compute mean and SEM
+            grouped = df_group.groupby('prop_bin')
+            mean_prop_data = grouped[prop].mean()
+            mean_conflict = grouped['conflict_percentage'].mean()
+            sem_conflict = grouped['conflict_percentage'].sem()  # Standard Error of the Mean
+            
+            # Plot mean conflict_percentage with confidence intervals
+            plt.plot(mean_prop_data, mean_conflict, label=f"{int(tx_group)} txs")
+            plt.fill_between(mean_prop_data,
+                            mean_conflict - sem_conflict,
+                            mean_conflict + sem_conflict,
+                            alpha=0.2)  # Adjust 'alpha' for transparency
+            
         plt.grid()
         plt.title(f"{prop}")
-        plt.xlabel("conflict_percentage")
-        plt.ylabel(prop)
+        plt.xlabel(f"{prop}")
+        plt.ylabel("conflict_percentage")
         plt.tight_layout()
+        plt.legend()
 
         # Save the plot
         plt.savefig(f"scatter_{prop}.png")
