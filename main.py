@@ -128,8 +128,9 @@ import matplotlib.pyplot as plt
 from scipy.interpolate import griddata
 
 def plot_data():
-    lines_count = 5
-    bins_count = 64
+    lines_count = 4
+    bins_count = 16
+    quant_fill = 0.05
 
     # Load the CSV file
     file_path = "eth_stats.csv"  # Replace with your file path
@@ -175,13 +176,15 @@ def plot_data():
             grouped = df_group.groupby('conflict_percentage_bin')
             mean_conflict = grouped["conflict_percentage"].mean()
             mean_prop = grouped[prop].mean()
-            sem_prop = grouped[prop].sem()  # Standard Error of the Mean
             
+            low_prop = grouped[prop].quantile(quant_fill)
+            hi_prop = grouped[prop].quantile(1-quant_fill)
+
             # Plot mean conflict_percentage with confidence intervals
             plt.plot(mean_conflict, mean_prop, label=f"#txs>{int(txs_min)}")
             plt.fill_between(mean_conflict,
-                            mean_prop - sem_prop,
-                            mean_prop + sem_prop,
+                            low_prop,
+                            hi_prop,
                             alpha=0.2)  # Adjust 'alpha' for transparency
             
         plt.grid()
