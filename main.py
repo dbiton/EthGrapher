@@ -168,26 +168,26 @@ def plot_data():
             conflict_percentage = df_group["conflict_percentage"]
             
             # Bin the 'prop' data
-            bins = np.linspace(prop_data.min(), prop_data.max(), num=bins_count)  # Adjust 'num' for bin granularity
-            df_group['prop_bin'] = pd.cut(prop_data, bins=bins, include_lowest=True)
+            bins = np.linspace(conflict_percentage.min(), conflict_percentage.max(), num=bins_count)  # Adjust 'num' for bin granularity
+            df_group['conflict_percentage_bin'] = pd.cut(conflict_percentage, bins=bins, include_lowest=True)
             
             # Group by the bins and compute mean and SEM
-            grouped = df_group.groupby('prop_bin')
-            mean_prop_data = grouped[prop].mean()
-            mean_conflict = grouped['conflict_percentage'].mean()
-            sem_conflict = grouped['conflict_percentage'].sem()  # Standard Error of the Mean
+            grouped = df_group.groupby('conflict_percentage_bin')
+            mean_conflict = grouped["conflict_percentage"].mean()
+            mean_prop = grouped[prop].mean()
+            sem_prop = grouped[prop].sem()  # Standard Error of the Mean
             
             # Plot mean conflict_percentage with confidence intervals
-            plt.plot(mean_prop_data, mean_conflict, label=f"#txs>{int(txs_min)}")
-            plt.fill_between(mean_prop_data,
-                            mean_conflict - sem_conflict,
-                            mean_conflict + sem_conflict,
+            plt.plot(mean_conflict, mean_prop, label=f"#txs>{int(txs_min)}")
+            plt.fill_between(mean_conflict,
+                            mean_prop - sem_prop,
+                            mean_prop + sem_prop,
                             alpha=0.2)  # Adjust 'alpha' for transparency
             
         plt.grid()
         plt.title(f"{prop}")
-        plt.xlabel(f"{prop}")
-        plt.ylabel("conflict_percentage")
+        plt.ylabel(f"{prop}")
+        plt.xlabel("conflict_percentage")
         plt.tight_layout()
         plt.legend()
 
