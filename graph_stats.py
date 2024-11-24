@@ -106,6 +106,14 @@ def graph_longest_path_length(graph):
         print(f"Exception in graph_longest_path_length: {e}")
         return float('nan')
 
+def graph_largest_connected_component_size(G):
+    try:
+        components = nx.connected_components(G)
+        largest_size = max(len(component) for component in components)
+        return largest_size
+    except Exception as e:
+        print(f"Exception in graph_largest_connected_component_size: {e}")
+        return float('nan')
 
 def graph_clique(graph):
     try:

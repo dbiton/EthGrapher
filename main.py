@@ -118,7 +118,9 @@ def process_block(block_number, block_trace):
         "transitivity": graph_transitivity(conflict_graph),
         "diameter": graph_diameter(conflict_graph),
         "clique_number": graph_clique(conflict_graph),
-        "conflict_percentage": graph_conflict_percentage(conflict_graph)
+        "conflict_percentage": graph_conflict_percentage(conflict_graph),
+        "largest_conn_comp": graph_largest_connected_component_size(conflict_graph),
+        # "longest_simple_path_dfs": graph_longest_simple_path_dfs(conflict_graph)
     }
     return results
 
@@ -128,8 +130,8 @@ import matplotlib.pyplot as plt
 from scipy.interpolate import griddata
 
 def plot_data():
-    lines_count = 4
-    bins_count = 16
+    lines_count = 5
+    bins_count = 32
     quant_fill = 0.05
 
     # Load the CSV file
