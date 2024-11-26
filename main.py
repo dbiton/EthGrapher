@@ -120,7 +120,7 @@ def process_block(block_number, block_trace):
         "clique_number": graph_clique(conflict_graph),
         "conflict_percentage": graph_conflict_percentage(conflict_graph),
         "largest_conn_comp": graph_largest_connected_component_size(conflict_graph),
-        # "longest_simple_path_dfs": graph_longest_simple_path_dfs(conflict_graph)
+        "longest_path_length_monte_carlo": graph_longest_path_length(conflict_graph)
     }
     return results
 
@@ -247,16 +247,16 @@ def process_blocks_traces():
         ax.grid(True)
         
         # Display the plot
-        plt.show()
+        # plt.show()
         
         # Save the plot as a PNG file with the key name
         fig.savefig(f"{key}.png")
         
         # Close the figure to free up memory
-        plt.close(fig)
+        # plt.close(fig)
 
 def main():
-    # process_blocks_traces()
+    process_blocks_traces()
     plot_data()
 
 if __name__ == "__main__":

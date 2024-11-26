@@ -1,4 +1,5 @@
 from itertools import permutations
+import random
 import networkx as nx
 from networkx.algorithms.community import greedy_modularity_communities
 
@@ -82,30 +83,35 @@ def graph_conflict_percentage(G):
         print(f"Exception in graph_conflict_percentage: {e}")
         return float('nan')
 
-def graph_longest_path_length(graph):
+
+def graph_longest_path_length(G):
     try:
-        # Get all nodes in the graph
-        nodes = list(graph.nodes())
-        max_length = 0
-        
-        # Iterate over all possible permutations of nodes
-        for perm in permutations(nodes):
-            length = 0
-            valid_path = True
-            for i in range(len(perm) - 1):
-                if graph.has_edge(perm[i], perm[i+1]):
-                    length += graph[perm[i]][perm[i+1]].get('weight', 1)  # Use weight if present, otherwise 1
-                else:
-                    valid_path = False
-                    break
-            if valid_path:
-                max_length = max(max_length, length)
-        
-        return max_length
+        components = sorted(nx.connected_components(G), key=len, reverse=True)
+        longest_path_length = 0
+        for comp_nodes in components:
+            comp_size = len(comp_nodes)
+            if comp_size <= longest_path_length:
+                break
+            sampled_nodes = random.sample(list(comp_nodes), min(1, comp_size // 10))
+            for source_node in sampled_nodes:
+                seen_nodes = {source_node}
+                curr_node = source_node
+                path_length = 1
+                while True:
+                    neighbors = set(G.neighbors(curr_node))
+                    unseen_neighbors = list(neighbors.difference(seen_nodes))
+                    if len(unseen_neighbors) == 0:
+                        break
+                    curr_node = random.choice(unseen_neighbors)
+                    seen_nodes.add(curr_node)
+                    path_length += 1
+                longest_path_length = max(path_length, longest_path_length)
+        return longest_path_length
     except Exception as e:
         print(f"Exception in graph_longest_path_length: {e}")
         return float('nan')
 
+# instead make a random path!
 def graph_largest_connected_component_size(G):
     try:
         components = nx.connected_components(G)
