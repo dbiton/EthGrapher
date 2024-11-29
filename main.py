@@ -6,29 +6,37 @@ import multiprocessing as mp
 from save_load_ledger import *
 from graph_stats import *
 
-def process_call(call, reads, writes):
-    # Handle STATICCALL: Read-only call
-    if call["type"] == "STATICCALL":
+def process_call(call, reads, writes, writes_disabled):
+    call_type = call["type"]
+    writes_disabled = writes_disabled
+    
+    if call_type == "STATICCALL":
         reads.add(call["to"])
+        reads.add(call["from"])
+        writes_disabled = True
 
-    # Handle CALL, CREATE, and DELEGATECALL
-    elif call["type"] in {"CALL", "CREATE", "DELEGATECALL"}:
-        # DELEGATECALL writes to the caller's context, not `to`
-        if call["type"] == "DELEGATECALL":
+    elif call_type == "DELEGATECALL":
+        if not writes_disabled:
             writes.add(call["from"])
-        else:
+        reads.add(call["from"])
+        reads.add(call["to"])
+        
+    elif call_type in ["CREATE", "CREATE2", "CALL"]:
+        if not writes_disabled:
             writes.add(call["to"])
-
-        # Value transfer always indicates a write to the recipient
-        if "value" in call and int(call["value"], 16) > 0:
-            writes.add(call["to"])
-
-        # The caller may also modify its own state
-        writes.add(call["from"])
+        reads.add(call["from"])
+        reads.add(call["to"])
+    
+    elif call_type == "SELFDESTRUCT":
+        reads.add(call["from"])
+    
+    else:
+        raise Exception(f"unhandled call type {call_type}!")
     
     if "calls" in call:
         for sub_call in call["calls"]:
-            process_call(sub_call, reads, writes)
+            process_call(sub_call, reads, writes, writes_disabled)
+
 
 def extract_reads_writes_from_block(block_trace):
     ops = []
