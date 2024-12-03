@@ -1,0 +1,93 @@
+from typing import Dict, Set
+import networkx as nx
+
+def create_conflict_graph(reads: Dict[str, Set[str]], writes: Dict[str, Set[str]]):
+    G = nx.Graph()
+
+    for tx0_hash, tx0_writes in writes.items():
+      for tx1_hash, tx1_reads in reads.items():
+        if tx0_hash != tx1_hash:
+          if not tx0_writes.isdisjoint(tx1_reads):
+            G.add_edge(tx0_hash, tx1_hash)
+      for tx1_hash, tx1_writes in reads.items():
+        # checks both tx0_hash != tx1_hash and removes redundent checks with >
+        if tx0_hash > tx1_hash:
+          if not tx0_writes.isdisjoint(tx1_writes):
+            G.add_edge(tx0_hash, tx1_hash)
+
+    return G
+
+def parse_preStateTracer_trace(block_trace_diffFalse, block_trace_diffTrue):
+    writes: Dict[str, Set[str]] = {}
+    reads: Dict[str, Set[str]] = {}
+    
+    for entry in block_trace_diffTrue:
+        tx = entry["result"]
+        tx_hash = entry["txHash"]
+        tx_writes = set(tx['pre']) | set(tx['post'])
+        if len(tx_writes) > 0:
+          writes[tx_hash] = tx_writes
+    
+    for entry in block_trace_diffFalse:
+        tx = entry["result"]
+        tx_hash = entry["txHash"]
+        tx_reads = set(tx).difference(writes.get(tx_hash, set()))
+        if len(tx_reads) > 0:
+          reads[tx_hash] = set(tx).difference(writes.get(tx_hash, set()))
+    
+    return reads, writes
+
+
+def parse_callTracer_trace_calls(call, reads, writes, writes_disabled):
+    call_type = call["type"]
+    writes_disabled = writes_disabled
+
+    if call_type == "STATICCALL":
+        reads.add(call["to"])
+        reads.add(call["from"])
+        writes_disabled = True
+
+    elif call_type == "DELEGATECALL":
+        if not writes_disabled:
+            writes.add(call["from"])
+        reads.add(call["from"])
+        reads.add(call["to"])
+
+    elif call_type in ["CREATE", "CREATE2", "CALL"]:
+        if not writes_disabled:
+            writes.add(call["to"])
+        reads.add(call["from"])
+        reads.add(call["to"])
+
+    elif call_type == "SELFDESTRUCT":
+        reads.add(call["from"])
+
+    else:
+        raise Exception(f"unhandled call type {call_type}!")
+
+    if "calls" in call:
+        for sub_call in call["calls"]:
+            parse_callTracer_trace_calls(sub_call, reads, writes, writes_disabled)
+
+
+def parse_callTracer_trace(block_trace):
+    writes: Dict[str, Set[str]] = {}
+    reads: Dict[str, Set[str]] = {}
+
+    for entry in block_trace:
+        tx = entry["result"]
+        tx_hash = entry["txHash"]
+        if "calls" in tx:
+            for call in tx["calls"]:
+                iter_reads = set()
+                iter_writes = set()
+                parse_callTracer_trace_calls(call, iter_reads, iter_writes, False)
+                if tx_hash in writes:
+                    writes[tx_hash] = iter_writes
+                else:
+                    writes[tx_hash] |= iter_writes
+                if tx_hash in reads:
+                    reads[tx_hash] = iter_reads
+                else:
+                    reads[tx_hash] |= iter_reads
+    return reads, writes

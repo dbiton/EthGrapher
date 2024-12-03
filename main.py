@@ -3,104 +3,9 @@ import pandas as pd
 import networkx as nx
 import multiprocessing as mp
 
+from parsers import create_conflict_graph, parse_callTracer_trace, parse_preStateTracer_trace
 from save_load_ledger import *
 from graph_stats import *
-
-def process_call(call, reads, writes, writes_disabled):
-    call_type = call["type"]
-    writes_disabled = writes_disabled
-    
-    if call_type == "STATICCALL":
-        reads.add(call["to"])
-        reads.add(call["from"])
-        writes_disabled = True
-
-    elif call_type == "DELEGATECALL":
-        if not writes_disabled:
-            writes.add(call["from"])
-        reads.add(call["from"])
-        reads.add(call["to"])
-        
-    elif call_type in ["CREATE", "CREATE2", "CALL"]:
-        if not writes_disabled:
-            writes.add(call["to"])
-        reads.add(call["from"])
-        reads.add(call["to"])
-    
-    elif call_type == "SELFDESTRUCT":
-        reads.add(call["from"])
-    
-    else:
-        raise Exception(f"unhandled call type {call_type}!")
-    
-    if "calls" in call:
-        for sub_call in call["calls"]:
-            process_call(sub_call, reads, writes, writes_disabled)
-
-
-def extract_reads_writes_from_block(block_trace):
-    ops = []
-
-    # Process each transaction in the block trace
-    for entry in block_trace:
-        tx = entry['result']
-        tx_hash = entry['txHash']
-        if "calls" in tx:
-            for call in tx["calls"]:
-                reads = set()
-                writes = set()
-                process_call(call, reads, writes)
-                ops += [{"hash": tx_hash, "address": address, "op": "read"} for address in reads]
-                ops += [{"hash": tx_hash, "address": address, "op": "write"} for address in writes]
-
-    return ops
-
-def create_conflict_graph_block_trace(block_trace):
-    G = nx.Graph()
-
-    ops = extract_reads_writes_from_block(block_trace)
-
-    for tx in block_trace:
-        G.add_node(tx['txHash'])
-
-    for i, t1 in enumerate(ops):
-        for t2 in ops[i+1:]:
-            if t1["hash"] == t2["hash"]:
-                continue
-
-            if (t1["address"] == t2["address"]
-                and (t1["op"] == "write" or t2["op"] == "write")):
-                G.add_edge(t1["hash"], t2["hash"])
-    return G
-
-
-def create_conflict_graph_trace(block):
-    txs = block["transactions"]
-    # Initialize a graph
-    G = nx.Graph()
-
-    for tx in txs:
-        G.add_node(tx['hash'])
-
-    ops = []
-    # Add nodes for each transaction
-    for tx in txs:
-        ops.append({"hash": tx['hash'], "data": tx['from'], "op": 'write'})
-        ops.append({"hash": tx['hash'], "data": tx['to'], "op": 'write'})
-
-    # Check for conflicts and add edges
-    for i, t1 in enumerate(ops):
-        for j, t2 in enumerate(ops):
-            if t1["hash"] == t2["hash"]:
-                continue  # Avoid duplicate pairs and self-loops
-
-            # Conflict if same source or destination with at least one write
-            if (
-                t1["data"] == t2["data"]
-                and (t1["op"] == "write" or t2["op"] == "write")
-            ):
-                G.add_edge(t1["hash"], t2["hash"])
-    return G
 
 
 def plot_graph(graph):
@@ -112,7 +17,8 @@ def plot_graph(graph):
 
 def process_block(block_number, block_trace):
     """Process a single block and return results."""
-    conflict_graph = create_conflict_graph_block_trace(block_trace)
+    reads, writes = parse_callTracer_trace(block_trace)
+    conflict_graph = create_conflict_graph(reads, writes)
     
     results = {
         "blockNumber": block_number,
@@ -218,7 +124,7 @@ def process_blocks_traces():
         async_results = []
 
         # Load blocks from the ledger using the generator
-        for block_number, block_trace in load_blocks_traces():
+        for block_number, block_trace in load_blocks_traces(50000):
             # Submit each block for processing
             async_result = pool.apply_async(process_block, (block_number, block_trace,))
             async_results.append(async_result)
@@ -263,9 +169,47 @@ def process_blocks_traces():
         # Close the figure to free up memory
         # plt.close(fig)
 
+def f(i_begin):
+    with open(f"{i_begin}_preState_diffFalse.txt", "ab") as f:
+        for i in range(i_begin, i_begin+100000):
+            trace = fetch_block_trace(i)
+            pickle.dump((i, trace), f)
+            print(i)
+    return True
+
 def main():
-    process_blocks_traces()
-    plot_data()
+    # Generate the range of inputs
+    inputs = range(20000000, 21200000, 100000)
+    
+    # Set the number of processes (adjust based on your system's cores)
+    num_processes = 4
+    
+    # Use a Pool for multiprocessing
+    with mp.Pool(processes=num_processes) as pool:
+        # Execute the function `f` across inputs
+        results = pool.map(f, inputs)
+    
+    # Optionally, process the results
+    print("Processing completed.")
 
 if __name__ == "__main__":
-    main()
+    diffTrues = []
+    diffFalses = []
+    with open('20700000_preState_diffTrue.txt', 'rb') as f:
+        while True:
+            try:
+                block_number, trace = pickle.load(f)
+                diffTrues.append(trace)
+                print(block_number)
+            except:
+                break
+    last_block_number = block_number
+    with open('20700000_preState_diffFalse.txt', 'rb') as f:
+        for i in range(20700000, last_block_number+1):
+            block_number, trace = pickle.load(f)
+            print(block_number)
+            diffFalses.append(trace)
+    for diffFalse, diffTrue in zip(diffFalses, diffTrues):
+        reads, writes = parse_preStateTracer_trace(diffFalse, diffTrue)
+        G = create_conflict_graph(reads, writes)
+        plot_graph(G)
