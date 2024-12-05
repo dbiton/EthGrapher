@@ -1,10 +1,12 @@
-from typing import Dict, Set
+from typing import Dict, Set, Tuple
 import networkx as nx
 
-def create_conflict_graph(reads: Dict[str, Set[str]], writes: Dict[str, Set[str]]):
+def create_conflict_graph(reads: Dict[str, Set[str]], writes: Dict[str, Set[str]]) -> nx.Graph:
     G = nx.Graph()
 
     for tx0_hash, tx0_writes in writes.items():
+      if tx0_hash == "0x5573ffd53c8a28284b6808371207decf3fd0fa8cbe4e9c1be257601779c38182":
+        x = 3
       for tx1_hash, tx1_reads in reads.items():
         if tx0_hash != tx1_hash:
           if not tx0_writes.isdisjoint(tx1_reads):
@@ -17,7 +19,7 @@ def create_conflict_graph(reads: Dict[str, Set[str]], writes: Dict[str, Set[str]
 
     return G
 
-def parse_preStateTracer_trace(block_trace_diffFalse, block_trace_diffTrue):
+def parse_preStateTracer_trace(block_trace_diffFalse: dict, block_trace_diffTrue: dict) -> Tuple[Dict[str, Set[str]],Dict[str, Set[str]]]:
     writes: Dict[str, Set[str]] = {}
     reads: Dict[str, Set[str]] = {}
     
@@ -91,3 +93,12 @@ def parse_callTracer_trace(block_trace):
                 else:
                     reads[tx_hash] |= iter_reads
     return reads, writes
+
+def has_field(tx, field):
+    return field in tx and tx[field] != b'' and tx[field] != None
+
+def is_smart_contract_deployment(tx):
+    return has_field(tx, "input") and not has_field(tx, 'to')
+
+def is_smart_contract_interaction(tx):
+    return has_field(tx, "input") and has_field(tx, 'to')

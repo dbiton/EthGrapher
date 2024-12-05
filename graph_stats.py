@@ -1,5 +1,6 @@
 from itertools import permutations
 import random
+from typing import Dict
 import networkx as nx
 from networkx.algorithms.community import greedy_modularity_communities
 
@@ -133,3 +134,20 @@ def graph_clique(graph):
     except Exception as e:
         print(f"Exception in graph_clique_number: {e}")
         return float('nan')
+
+def get_graph_stats(graph: nx.Graph, additional_stats = {}) -> Dict[str, float]:
+    results = {
+        "degree": graph_average_degree(graph),
+        "greedy_color": graph_greedy_coloring(graph),
+        "assortativity": graph_assortativity(graph),
+        "cluster_coe": graph_cluster_coe(graph),
+        "density": graph_density(graph),
+        "modularity": graph_modularity(graph),
+        "transitivity": graph_transitivity(graph),
+        "diameter": graph_diameter(graph),
+        "clique_number": graph_clique(graph),
+        "conflict_percentage": graph_conflict_percentage(graph),
+        "largest_conn_comp": graph_largest_connected_component_size(graph),
+        "longest_path_length_monte_carlo": graph_longest_path_length(graph)
+    } + additional_stats
+    return results
