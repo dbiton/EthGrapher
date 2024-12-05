@@ -5,11 +5,17 @@ from concurrent.futures import ThreadPoolExecutor
 from web3 import Web3
 
 
+def fetcher_prestate(block_number: int):
+  diffFalse = fetch_block_trace(block_number, "prestateTracer", {"diffMode": False})
+  diffTrue = fetch_block_trace(block_number, "prestateTracer", {"diffMode": True})
+  return block_number, diffFalse, diffTrue
+
+
 def fetch_parallel(range_start: int, range_stop: int, fetcher: Callable[[int], Any]):    
     futures = []
     with ThreadPoolExecutor() as executor:
         futures = [executor.submit(fetcher, i) for i in range(range_start, range_stop)]
-        for future in enumerate(futures):
+        for future in futures:
             result = future.result()
             if result:
               yield result

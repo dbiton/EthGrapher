@@ -1,3 +1,5 @@
+import json
+import h5py
 from matplotlib import pyplot as plt
 import pandas as pd
 import networkx as nx
@@ -7,7 +9,7 @@ from parsers import create_conflict_graph, parse_callTracer_trace, parse_preStat
 from save_load_ledger import *
 from graph_stats import *
 
-
+from savers import save_prestate
 
 
 import pandas as pd
@@ -38,5 +40,7 @@ def main():
     pass
 
 if __name__ == "__main__":
-    main()
+    # save_prestate("21000000_preState.h5", 21000000, 21000100)
+    for i in load_file("21000000_preState.h5"):
+        x = 3
         
