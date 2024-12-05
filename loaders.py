@@ -1,20 +1,18 @@
 from itertools import count
+import json
 import os
 import pickle
 
+import h5py
+
 
 def load_file(filepath: str, limit=None):
-    limit_range = count()
-    if limit is not None:
-      limit_range = range(limit)
     if os.path.exists(filepath):
-        with open(filepath, "rb") as f:
-            for i in limit_range:
-                try:
-                  data = pickle.load(f)
-                  print(f"Loaded entry {i} from {filepath}")
-                  yield data
-                except EOFError:
-                    return
+        with h5py.File(filepath, 'r') as f:
+            dset = f['dataset']
+            limit = limit if limit is not None else dset.shape[0]
+            for i in range(limit):
+                value = json.loads(dset[i])
+                yield value  # Read one line at a time
     else:
         print("No traces file found.")
