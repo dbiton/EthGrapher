@@ -26,6 +26,8 @@ def save_to_file(filename: str, generator, total_size) -> None:
       for i in range(0, total_size, chunk_size):
           start = i
           end = min(i + chunk_size, total_size)
-          chunk = [json.dumps(value) for i, value in enumerate(generator) if i < chunk_size]
+          chunk = []
+          for i in range(start, end):
+            chunk.append(json.dumps(next(generator)))
           dset[start:end] = chunk
           print(f"saved {i} values")
