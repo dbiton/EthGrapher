@@ -42,6 +42,7 @@ def fetch_block_trace(block_number: int, tracer_name: str, tracer_config = {}) -
         }
         response = requests.post(CHAINSTACK_RPC_URL, json=payload)
         if response.status_code == 200:
+            print(f"fetched block trace {block_number} with {tracer_name}, {tracer_config}")
             return response.json()["result"]
         else:
             print(f"Error tracing block: {response.text}")
