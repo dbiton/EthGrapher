@@ -149,5 +149,5 @@ def get_graph_stats(graph: nx.Graph, additional_stats = {}) -> Dict[str, float]:
         "conflict_percentage": graph_conflict_percentage(graph),
         "largest_conn_comp": graph_largest_connected_component_size(graph),
         "longest_path_length_monte_carlo": graph_longest_path_length(graph)
-    } + additional_stats
+    } | additional_stats
     return results
