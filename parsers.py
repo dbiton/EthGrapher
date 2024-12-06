@@ -1,6 +1,35 @@
 from typing import Dict, Set, Tuple
 import networkx as nx
 
+def hex_to_bytes(s: str) -> bytes:
+    if isinstance(s, str) and s.startswith("0x"):
+        try:
+            s = s[2:]
+            if len(s) % 2 == 1:
+                s = '0' + s
+            return bytes.fromhex(s)
+        except ValueError:
+            raise ValueError(f"Invalid hexadecimal key: {s}")
+    return s
+
+def bytes_to_hex(b: bytes) -> bytes:
+    if isinstance(b, bytes):
+        return '0x' + b.hex()
+    return b
+
+def apply_recursively(obj, f):
+    if isinstance(obj, dict):
+        new_dict = {}
+        for key, value in obj.items():
+            # Process the key
+            key = f(key)
+            new_dict[key] = apply_recursively(value, f)
+        return new_dict
+    elif isinstance(obj, list):
+        return [apply_recursively(item, f) for item in obj]
+    else:
+        return f(obj)
+
 def create_conflict_graph(reads: Dict[str, Set[str]], writes: Dict[str, Set[str]]) -> nx.Graph:
     G = nx.Graph()
 
