@@ -1,3 +1,4 @@
+import json
 import math
 import os
 import pickle
@@ -28,7 +29,9 @@ def save_to_file(filename: str, generator, total_size) -> None:
           start = i
           end = min(i + chunk_size, total_size)
           i_chunk = i // chunk_size
-          chunk = pickle.dumps([apply_recursively(next(generator), hex_to_bytes) for _ in range(start, end)])
+          chunk = [next(generator) for _ in range(start, end)]
+          chunk = json.dumps(chunk)
+          chunk = chunk.encode('ascii')
           chunk = zlib.compress(chunk, 3)
           chunk = np.frombuffer(chunk, dtype=np.uint8)
           dset[i_chunk] = chunk

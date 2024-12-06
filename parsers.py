@@ -14,7 +14,10 @@ def hex_to_bytes(s: str) -> bytes:
 
 def bytes_to_hex(b: bytes) -> bytes:
     if isinstance(b, bytes):
-        return '0x' + b.hex()
+        hex = b.hex()
+        while hex[0] == "0" and len(hex) > 1:
+            hex = hex[1:]
+        return '0x' + hex
     return b
 
 def apply_recursively(obj, f):

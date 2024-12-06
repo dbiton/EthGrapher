@@ -9,14 +9,14 @@ from parsers import create_conflict_graph, parse_callTracer_trace, parse_preStat
 from graph_stats import *
 
 from plotters import plot_data
-from savers import save_prestate
+from savers import save_prestate, save_to_file
 
 
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.interpolate import griddata
-from loaders import load_file
+from loaders import load_compressed_file, load_file
 
 def process_prestate_trace(block_number, diffFalse, diffTrue):
     print(f"processing {block_number}...")
@@ -37,10 +37,21 @@ def generate_data(data_path, limit = None):
         df = pd.DataFrame(data)
         df.to_csv("data.csv", index=False)
 
+
+from deepdiff import DeepDiff
+
+
 def main():
+    name = "JSONJSONJSON"
+    data = [v for v in load_file("21000000_preState.h5")]
+    save_to_file(name, iter(data), len(data))
+    data_rec = [v for v in load_compressed_file(name)]
     # save_prestate("21000000_preState.h5", 21000000, 21000100)
-    generate_data("21000000_preState.h5")
-    plot_data("data.csv")
+    #generate_data("21000000_preState.h5")
+    #plot_data("data.csv")
+    data == data_rec
+    diff = DeepDiff(data, data_rec)
+    print(diff)
 
 if __name__ == "__main__":
     main()

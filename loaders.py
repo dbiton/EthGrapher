@@ -16,11 +16,12 @@ def load_compressed_file(filepath: str, limit=None):
             for i_chunk in range(dset.shape[0]):
                 chunk = bytes(dset[i_chunk])
                 chunk = zlib.decompress(chunk)
-                chunk = pickle.loads(chunk)   
+                chunk = chunk.decode('ascii')
+                chunk = json.loads(chunk)
                 for value in chunk:
                     i += 1
                     print(f"loaded {i} values from {filepath}")
-                    yield apply_recursively(value, bytes_to_hex)
+                    yield value
                     if i == limit:
                         return
     else:
