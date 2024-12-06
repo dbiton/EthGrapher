@@ -1,3 +1,4 @@
+from itertools import count
 import json
 import math
 import os
@@ -13,26 +14,44 @@ def save_prestate(filename: str, range_start: int, range_stop: int):
   generator = fetch_parallel(range_start, range_stop, fetcher_prestate)
   save_to_file(filename, generator, range_stop-range_start)
     
-
-def save_to_file(filename: str, generator, total_size) -> None:
+def append_to_file(filename: str, generator) -> None:
+  if not os.path.exists(filename):
+    raise Exception(f"{filename} doesn't exists!")
+  chunk_size = 100
+  for i in count(0, chunk_size):
+      i_chunk = i // chunk_size
+      start = i
+      end = start
+      chunk = []
+      for _ in range(chunk_size):
+        try:
+          chunk.append(next(generator))
+          end += 1
+        except StopIteration:
+          break
+      if end - start == 0:
+        return
+      chunk = json.dumps(chunk)
+      chunk = chunk.encode('ascii')
+      chunk = zlib.compress(chunk, 4)
+      chunk = np.frombuffer(chunk, dtype=np.uint8)
+      with h5py.File(filename, 'a') as f:
+        dset = f['dataset']
+        dset.resize((i_chunk + 1,))
+        dset[i_chunk] = chunk
+      print(f"Saved {end} values in total to {filename}")
+      if end - start < chunk_size:
+        break
+  
+  
+def save_to_file(filename: str, generator) -> None:
   if os.path.exists(filename):
     raise Exception(f"{filename} already exists!")
   with h5py.File(filename, 'w') as f:
-      chunk_size = min(128, total_size)
-      chunk_count = int(math.ceil(total_size/chunk_size))
-      dset = f.create_dataset(
+      f.create_dataset(
           'dataset',
-          shape=(chunk_count,),
+          maxshape=(None,),
+          shape=(0,),
           dtype=h5py.vlen_dtype(np.dtype('uint8')),
       )
-      for i in range(0, total_size, chunk_size):
-          start = i
-          end = min(i + chunk_size, total_size)
-          i_chunk = i // chunk_size
-          chunk = [next(generator) for _ in range(start, end)]
-          chunk = json.dumps(chunk)
-          chunk = chunk.encode('ascii')
-          chunk = zlib.compress(chunk, 3)
-          chunk = np.frombuffer(chunk, dtype=np.uint8)
-          dset[i_chunk] = chunk
-          print(f"Saved {end} values in total to {filename}")
+  append_to_file(filename, generator)
