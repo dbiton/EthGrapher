@@ -65,9 +65,7 @@ def graph_diameter(G):
         if nx.is_connected(G):
             diameter = nx.diameter(G)
         else:
-            diameter = max(
-                nx.diameter(G.subgraph(comp)) for comp in nx.connected_components(G)
-            )
+            diameter = max((nx.diameter(G.subgraph(comp)) for comp in nx.connected_components(G)), default=0)
         return diameter
     except Exception as e:
         print(f"Exception in graph_diameter: {e}")
@@ -116,7 +114,7 @@ def graph_longest_path_length(G):
 def graph_largest_connected_component_size(G):
     try:
         components = nx.connected_components(G)
-        largest_size = max(len(component) for component in components)
+        largest_size = max((len(component) for component in components), default=0)
         return largest_size
     except Exception as e:
         print(f"Exception in graph_largest_connected_component_size: {e}")
@@ -128,7 +126,7 @@ def graph_clique(graph):
         maximal_cliques = nx.find_cliques(graph)
         
         # Determine the size of the largest clique
-        max_clique_size = max(len(clique) for clique in maximal_cliques)
+        max_clique_size = max((len(clique) for clique in maximal_cliques), default=0)
         
         return max_clique_size
     except Exception as e:
