@@ -33,13 +33,23 @@ def process_prestate_trace(block_number, diffFalse, diffTrue):
     G = create_conflict_graph(txs, reads, writes)
     return get_graph_stats(G, {"block_number": block_number, "txs": len(diffFalse)})
 
-def generate_data(data_path, output_path, limit = None):
+def process_call_trace(block_number, call_trace):
+    print(f"processing {block_number}...")
+    if call_trace is None:
+        print(f"{block_number} data is missing!")
+        return None
+    reads, writes = parse_callTracer_trace(call_trace)
+    txs = [tx_trace["txHash"] for tx_trace in call_trace]
+    G = create_conflict_graph(txs, reads, writes)
+    return get_graph_stats(G, {"block_number": block_number, "txs": len(call_trace)})
+
+def generate_data(data_path, output_path, processor, limit = None):
     write_header = not os.path.exists(output_path)
     with open(output_path, mode="a", newline="") as file:
         with ProcessPoolExecutor() as pool:
             futures = [
-                pool.submit(process_prestate_trace, block_number, diffFalse, diffTrue) 
-                for block_number, diffFalse, diffTrue in load_compressed_file(data_path, limit)
+                pool.submit(processor, *data) 
+                for data in load_compressed_file(data_path, limit)
             ]
             writer = csv.writer(file)
             for i, future in enumerate(futures):
@@ -87,7 +97,8 @@ def translate(path_src, path_dst):
     save_to_file(path_dst, generator_old(path_src))
 
 if __name__ == "__main__":
-    main()
+    # main()
+    plot_data('output.csv')
     '''
     dirpath = f"E:\\eth_traces\\callTracer"
     dirpath_compressed = f"E:\\eth_traces\\callTracerCompressed"
