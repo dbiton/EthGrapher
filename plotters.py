@@ -26,7 +26,7 @@ def plot_data(csv_path):
         raise ValueError("The CSV file must contain 'X' and 'Y' columns.")
 
     # Extract X, Y, and property columns
-    properties = df.drop(columns=["density", "txs"]).columns
+    properties = df.drop(columns=["density"]).columns
     
     split_values = df["txs"].quantile([i / (lines_count + 1) for i in range(1, lines_count + 1)])
     split_values = sorted(list(split_values))

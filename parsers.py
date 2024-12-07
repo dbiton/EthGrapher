@@ -1,4 +1,4 @@
-from typing import Dict, Set, Tuple
+from typing import Dict, List, Set, Tuple
 import networkx as nx
 
 def hex_to_bytes(s: str) -> bytes:
@@ -33,12 +33,12 @@ def apply_recursively(obj, f):
     else:
         return f(obj)
 
-def create_conflict_graph(reads: Dict[str, Set[str]], writes: Dict[str, Set[str]]) -> nx.Graph:
+def create_conflict_graph(txs: List[str], reads: Dict[str, Set[str]], writes: Dict[str, Set[str]]) -> nx.Graph:
     G = nx.Graph()
 
+    G.add_nodes_from(txs)
+    
     for tx0_hash, tx0_writes in writes.items():
-      if tx0_hash == "0x5573ffd53c8a28284b6808371207decf3fd0fa8cbe4e9c1be257601779c38182":
-        x = 3
       for tx1_hash, tx1_reads in reads.items():
         if tx0_hash != tx1_hash:
           if not tx0_writes.isdisjoint(tx1_reads):

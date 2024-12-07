@@ -1,6 +1,7 @@
 import csv
 import json
 import os
+import pickle
 import h5py
 from matplotlib import pyplot as plt
 import pandas as pd
@@ -12,9 +13,9 @@ from parsers import create_conflict_graph, parse_callTracer_trace, parse_preStat
 from graph_stats import *
 
 from plotters import plot_data
-from savers import save_prestate, save_to_file
+from savers import append_to_file, save_prestate, save_to_file
 
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 
 import pandas as pd
 import numpy as np
@@ -24,14 +25,18 @@ from loaders import load_compressed_file, load_file
 
 def process_prestate_trace(block_number, diffFalse, diffTrue):
     print(f"processing {block_number}...")
+    if diffFalse is None or diffTrue is None:
+        print(f"{block_number} data is missing!")
+        return None
     reads, writes = parse_preStateTracer_trace(diffFalse, diffTrue)
-    G = create_conflict_graph(reads, writes)
+    txs = list(diffFalse.keys())
+    G = create_conflict_graph(txs, reads, writes)
     return get_graph_stats(G, {"block_number": block_number, "txs": len(diffFalse)})
 
 def generate_data(data_path, output_path, limit = None):
     write_header = not os.path.exists(output_path)
     with open(output_path, mode="a", newline="") as file:
-        with ProcessPoolExecutor(4) as pool:
+        with ProcessPoolExecutor() as pool:
             futures = [
                 pool.submit(process_prestate_trace, block_number, diffFalse, diffTrue) 
                 for block_number, diffFalse, diffTrue in load_compressed_file(data_path, limit)
@@ -39,6 +44,8 @@ def generate_data(data_path, output_path, limit = None):
             writer = csv.writer(file)
             for i, future in enumerate(futures):
                 result = future.result()
+                if result is None:
+                    continue
                 if write_header:
                     write_header = False
                     writer.writerow(result.keys())
@@ -55,7 +62,37 @@ def main():
         os.remove(output_path)
     for file in get_files(dirpath, ".h5"):
         generate_data(file, "output.csv")
-    plot_data()
-    
+    plot_data(output_path)
+
+def download():
+    dirpath = f"F:\\prev_E\\traces"
+    filesize = 1000
+    for begin in range(21021000, 21100000, filesize):
+        end = begin + filesize
+        filename = f"{begin}_{end}_preState_compressed.h5"
+        traces_generator = fetch_parallel(begin, end, fetcher_prestate)
+        save_to_file(os.path.join(dirpath, filename), traces_generator)
+
+def generator_old(filepath):
+    with open(filepath, "rb") as f:
+        for i in range(100000000000000000):
+            try:
+                result = pickle.load(f)
+                print(f"loaded {i}")
+                yield result
+            except:
+                break   
+
+def translate(path_src, path_dst):
+    save_to_file(path_dst, generator_old(path_src))
+
 if __name__ == "__main__":
-    main()
+    dirpath = f"E:\\eth_traces\\callTracer"
+    dirpath_compressed = f"E:\\eth_traces\\callTracerCompressed"
+    filenames = get_files(dirpath, ".txt")
+    
+    with ThreadPoolExecutor() as executor:
+        futures = [executor.submit(translate, filename_src, filename_src.replace("txt", "h5")) for filename_src in filenames]
+        for future in futures:
+            result = future.result()
+     
