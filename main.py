@@ -29,7 +29,7 @@ def process_prestate_trace(block_number, diffFalse, diffTrue):
         print(f"{block_number} data is missing!")
         return None
     reads, writes = parse_preStateTracer_trace(diffFalse, diffTrue)
-    txs = list(diffFalse.keys())
+    txs = [tx_trace["txHash"] for tx_trace in diffFalse]
     G = create_conflict_graph(txs, reads, writes)
     return get_graph_stats(G, {"block_number": block_number, "txs": len(diffFalse)})
 
@@ -87,6 +87,8 @@ def translate(path_src, path_dst):
     save_to_file(path_dst, generator_old(path_src))
 
 if __name__ == "__main__":
+    main()
+    '''
     dirpath = f"E:\\eth_traces\\callTracer"
     dirpath_compressed = f"E:\\eth_traces\\callTracerCompressed"
     filenames = get_files(dirpath, ".txt")
@@ -94,5 +96,5 @@ if __name__ == "__main__":
     with ThreadPoolExecutor() as executor:
         futures = [executor.submit(translate, filename_src, filename_src.replace("txt", "h5")) for filename_src in filenames]
         for future in futures:
-            result = future.result()
+            result = future.result()'''
      
