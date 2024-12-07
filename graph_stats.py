@@ -71,6 +71,13 @@ def graph_diameter(G):
         print(f"Exception in graph_diameter: {e}")
         return float('nan')
 
+def graph_density(G):
+    try:
+        return nx.density(G)
+    except Exception as e:
+        print(f"Exception in graph_conflict_percentage: {e}")
+        return float('nan')
+
 def graph_conflict_percentage(G):
     try:
         num_nodes = G.number_of_nodes()
@@ -144,7 +151,7 @@ def get_graph_stats(graph: nx.Graph, additional_stats = {}) -> Dict[str, float]:
         "transitivity": graph_transitivity(graph),
         "diameter": graph_diameter(graph),
         "clique_number": graph_clique(graph),
-        "conflict_percentage": graph_conflict_percentage(graph),
+        "density": graph_density(graph),
         "largest_conn_comp": graph_largest_connected_component_size(graph),
         "longest_path_length_monte_carlo": graph_longest_path_length(graph)
     } | additional_stats

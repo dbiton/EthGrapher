@@ -20,11 +20,11 @@ def plot_data(csv_path):
     df = pd.read_csv(csv_path)
 
     # Ensure the data has X, Y, and other columns
-    if "conflict_percentage" not in df.columns or "txs" not in df.columns:
+    if "density" not in df.columns or "txs" not in df.columns:
         raise ValueError("The CSV file must contain 'X' and 'Y' columns.")
 
     # Extract X, Y, and property columns
-    properties = df.drop(columns=["conflict_percentage", "txs"]).columns
+    properties = df.drop(columns=["density", "txs"]).columns
     
     split_values = df["txs"].quantile([i / (lines_count + 1) for i in range(1, lines_count + 1)])
     split_values = sorted(list(split_values))
@@ -49,21 +49,21 @@ def plot_data(csv_path):
             df_group = df_group.copy()
             
             prop_data = df_group[prop]
-            conflict_percentage = df_group["conflict_percentage"]
+            density = df_group["density"]
             
             # Bin the 'prop' data
-            bins = np.linspace(conflict_percentage.min(), conflict_percentage.max(), num=bins_count)  # Adjust 'num' for bin granularity
-            df_group['conflict_percentage_bin'] = pd.cut(conflict_percentage, bins=bins, include_lowest=True)
+            bins = np.linspace(density.min(), density.max(), num=bins_count)  # Adjust 'num' for bin granularity
+            df_group['density_bin'] = pd.cut(density, bins=bins, include_lowest=True)
             
             # Group by the bins and compute mean and SEM
-            grouped = df_group.groupby('conflict_percentage_bin')
-            mean_conflict = grouped["conflict_percentage"].mean()
+            grouped = df_group.groupby('density_bin')
+            mean_conflict = grouped["density"].mean()
             mean_prop = grouped[prop].mean()
             
             low_prop = grouped[prop].quantile(quant_fill)
             hi_prop = grouped[prop].quantile(1-quant_fill)
 
-            # Plot mean conflict_percentage with confidence intervals
+            # Plot mean density with confidence intervals
             plt.plot(mean_conflict, mean_prop, label=f"#txs>{int(txs_min)}")
             plt.fill_between(mean_conflict,
                             low_prop,
@@ -73,12 +73,12 @@ def plot_data(csv_path):
         plt.grid()
         plt.title(f"{prop}")
         plt.ylabel(f"{prop}")
-        plt.xlabel("conflict_percentage")
+        plt.xlabel("density")
         plt.tight_layout()
         plt.legend()
 
         # Save the plot
-        plt.savefig(f"scatter_{prop}.png")
+        plt.savefig(f"{prop}.png")
         plt.close()
 
     print("Plots have been generated and saved as PNG files.")

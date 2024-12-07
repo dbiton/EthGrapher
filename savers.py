@@ -14,10 +14,11 @@ def save_prestate(filename: str, range_start: int, range_stop: int):
   generator = fetch_parallel(range_start, range_stop, fetcher_prestate)
   save_to_file(filename, generator, range_stop-range_start)
     
-def append_to_file(filename: str, generator) -> None:
+def append_to_file(filename: str, generator, limit=None) -> None:
   if not os.path.exists(filename):
     raise Exception(f"{filename} doesn't exists!")
   chunk_size = 100
+  is_done = False
   for i in count(0, chunk_size):
       i_chunk = i // chunk_size
       start = i
@@ -27,7 +28,11 @@ def append_to_file(filename: str, generator) -> None:
         try:
           chunk.append(next(generator))
           end += 1
+          if end == limit:
+            is_done = True
+            break
         except StopIteration:
+          is_done = True
           break
       if end - start == 0:
         return
@@ -40,11 +45,11 @@ def append_to_file(filename: str, generator) -> None:
         dset.resize((i_chunk + 1,))
         dset[i_chunk] = chunk
       print(f"Saved {end} values in total to {filename}")
-      if end - start < chunk_size:
+      if is_done:
         break
   
   
-def save_to_file(filename: str, generator) -> None:
+def save_to_file(filename: str, generator, limit=None) -> None:
   if os.path.exists(filename):
     raise Exception(f"{filename} already exists!")
   with h5py.File(filename, 'w') as f:
@@ -54,4 +59,4 @@ def save_to_file(filename: str, generator) -> None:
           shape=(0,),
           dtype=h5py.vlen_dtype(np.dtype('uint8')),
       )
-  append_to_file(filename, generator)
+  append_to_file(filename, generator, limit)
