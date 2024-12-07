@@ -16,6 +16,14 @@ def graph_average_degree(graph):
         print(f"Exception in graph_average_degree: {e}")
         return float('nan')
 
+def graph_max_degree(graph: nx.Graph):
+    try:
+        return max([val for (node, val) in graph.degree()], default=0)
+    except Exception as e:
+        print(f"Exception in graph_average_degree: {e}")
+        return float('nan')
+
+
 def graph_cluster_coe(graph):
     try:
         return nx.average_clustering(graph)
@@ -98,7 +106,7 @@ def graph_longest_path_length(G):
             comp_size = len(comp_nodes)
             if comp_size <= longest_path_length:
                 break
-            sampled_nodes = random.sample(list(comp_nodes), min(1, comp_size // 10))
+            sampled_nodes = random.sample(list(comp_nodes), max(1, comp_size // 10))
             for source_node in sampled_nodes:
                 seen_nodes = {source_node}
                 curr_node = source_node
@@ -122,6 +130,8 @@ def graph_largest_connected_component_size(G):
     try:
         components = nx.connected_components(G)
         largest_size = max((len(component) for component in components), default=0)
+        if largest_size == nx.number_of_nodes(G):
+            x = 3
         return largest_size
     except Exception as e:
         print(f"Exception in graph_largest_connected_component_size: {e}")
@@ -153,6 +163,7 @@ def get_graph_stats(graph: nx.Graph, additional_stats = {}) -> Dict[str, float]:
         "clique_number": graph_clique(graph),
         "density": graph_density(graph),
         "largest_conn_comp": graph_largest_connected_component_size(graph),
-        "longest_path_length_monte_carlo": graph_longest_path_length(graph)
+        "longest_path_length_monte_carlo": graph_longest_path_length(graph),
+        "max_degree": graph_max_degree(graph)
     } | additional_stats
     return results

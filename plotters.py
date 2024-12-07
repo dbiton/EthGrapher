@@ -2,7 +2,7 @@
 from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
-
+import networkx as nx
 
 def plot_graph(graph):
     plt.figure(figsize=(8, 6))
@@ -13,8 +13,10 @@ def plot_graph(graph):
 
 
 def plot_data(csv_path):
-    lines_count = 5
-    bins_count = 32
+    markers = ["o", "s", "^", "v", "D", "*"]
+    
+    lines_count = 4
+    bins_count = 16
     quant_fill = 0.05
 
     df = pd.read_csv(csv_path)
@@ -64,7 +66,7 @@ def plot_data(csv_path):
             hi_prop = grouped[prop].quantile(1-quant_fill)
 
             # Plot mean density with confidence intervals
-            plt.plot(mean_conflict, mean_prop, label=f"#txs>{int(txs_min)}")
+            plt.plot(mean_conflict, mean_prop, label=f"#txs>{int(txs_min)}", marker=markers[i_tx_group])
             plt.fill_between(mean_conflict,
                             low_prop,
                             hi_prop,
@@ -78,7 +80,7 @@ def plot_data(csv_path):
         plt.legend()
 
         # Save the plot
-        plt.savefig(f"{prop}.png")
+        plt.savefig(f"figures\\{prop}.png")
         plt.close()
 
     print("Plots have been generated and saved as PNG files.")

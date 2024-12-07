@@ -10,6 +10,8 @@ from concurrent.futures import ThreadPoolExecutor
 
 def uncompress_chunk(dset, i):
     chunk = dset[i]
+    if len(chunk) == 0:
+        return []
     chunk = bytes(chunk)
     chunk = zlib.decompress(chunk)
     chunk = chunk.decode('ascii')
