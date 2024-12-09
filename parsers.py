@@ -116,11 +116,11 @@ def parse_callTracer_trace(block_trace):
                 iter_reads = set()
                 iter_writes = set()
                 parse_callTracer_trace_calls(call, iter_reads, iter_writes, False)
-                if tx_hash in writes:
+                if tx_hash not in writes:
                     writes[tx_hash] = iter_writes
                 else:
                     writes[tx_hash] |= iter_writes
-                if tx_hash in reads:
+                if tx_hash not in reads:
                     reads[tx_hash] = iter_reads
                 else:
                     reads[tx_hash] |= iter_reads
