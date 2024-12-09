@@ -81,13 +81,13 @@ def parse_callTracer_trace_calls(call, reads, writes, writes_disabled):
         reads.add(call["from"])
         writes_disabled = True
 
-    elif call_type == "DELEGATECALL":
+    elif call_type in ["DELEGATECALL", "CALLCODE"]:
         if not writes_disabled:
             writes.add(call["from"])
         reads.add(call["from"])
         reads.add(call["to"])
 
-    elif call_type in ["CREATE", "CREATE2", "CALL"]:
+    elif call_type in ["CREATE", "CREATE2", "CALL", "INVALID", "RETURN", "REVERT"] or call_type.startswith("LOG"):
         if not writes_disabled:
             writes.add(call["to"])
         reads.add(call["from"])
