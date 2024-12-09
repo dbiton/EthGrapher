@@ -22,20 +22,28 @@ def load_compressed_file(filepath: str, limit=None):
     if os.path.exists(filepath):
         with h5py.File(filepath, 'r') as f:
             dset = f['dataset']
-            i = 0
-            with ThreadPoolExecutor() as pool:
+            i_entry = 0
+            chunk_count = dset.shape[0]
+            max_pending = 2
+            with ThreadPoolExecutor(max_pending) as pool:
                 futures = [
                     pool.submit(uncompress_chunk, dset, i_chunk) 
-                    for i_chunk in range(dset.shape[0])
+                    for i_chunk in range(min(max_pending, chunk_count))
                 ]
-                for future in futures:
+                i_chunk = len(futures)
+                while len(futures) > 0:
+                    future = futures[0]
+                    futures = futures[1:]
                     entries = future.result()
                     for entry in entries:
-                        i += 1
-                        print(f"loaded {i} values from {filepath}")
+                        i_entry += 1
+                        print(f"loaded {i_entry} values from {filepath}")
                         yield entry
-                        if i == limit:
+                        if i_entry == limit:
                             return
+                    if i_chunk < chunk_count:
+                        futures.append(pool.submit(uncompress_chunk, dset, i_chunk))
+                        i_chunk += 1
     else:
         print("No traces file found.")
 

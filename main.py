@@ -1,4 +1,5 @@
 import csv
+from itertools import islice
 import json
 import os
 import pickle
@@ -45,22 +46,33 @@ def process_call_trace(block_number, call_trace):
 
 def generate_data(data_path, output_path, processor, limit = None):
     write_header = not os.path.exists(output_path)
+    max_pending = 1000
     with open(output_path, mode="a", newline="") as file:
         with ProcessPoolExecutor() as pool:
+            data_generator = load_compressed_file(data_path, limit)
             futures = [
-                pool.submit(processor, *data) 
-                for data in load_compressed_file(data_path, limit)
+                pool.submit(processor, *data) for data in islice(data_generator, max_pending)
             ]
+            all_submitted = len(futures) < max_pending
             writer = csv.writer(file)
-            for i, future in enumerate(futures):
+            i = 0
+            while len(futures) > 0:
+                future = futures[0]
+                futures = futures[1:]
                 result = future.result()
-                if result is None:
-                    continue
-                if write_header:
-                    write_header = False
-                    writer.writerow(result.keys())
-                writer.writerow(result.values())
-                print(f"wrote result {i} to output csv")
+                if result is not None:
+                    if write_header:
+                        write_header = False
+                        writer.writerow(result.keys())
+                    writer.writerow(result.values())
+                    print(f"wrote result {i} to output csv")
+                    i += 1
+                if not all_submitted:
+                    try:
+                        next_data = next(data_generator)
+                        futures.append(pool.submit(processor, *next_data))
+                    except StopIteration:
+                        all_submitted = True
 
 def get_files(folder_path, extension):
     return [os.path.join(folder_path, f) for f in os.listdir(folder_path) if f.endswith(extension)]
@@ -97,15 +109,6 @@ def translate(path_src, path_dst):
     save_to_file(path_dst, generator_old(path_src))
 
 if __name__ == "__main__":
-    # main()
-    plot_data('output.csv')
-    '''
-    dirpath = f"E:\\eth_traces\\callTracer"
-    dirpath_compressed = f"E:\\eth_traces\\callTracerCompressed"
-    filenames = get_files(dirpath, ".txt")
-    
-    with ThreadPoolExecutor() as executor:
-        futures = [executor.submit(translate, filename_src, filename_src.replace("txt", "h5")) for filename_src in filenames]
-        for future in futures:
-            result = future.result()'''
-     
+    for filepath in get_files("E:\\eth_traces\\callTracer", "h5"):
+        generate_data(filepath, "output_calltracer.csv", process_call_trace)
+    plot_data('output_calltracer.csv')
