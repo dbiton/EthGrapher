@@ -72,26 +72,34 @@ def parse_preStateTracer_trace(block_trace_diffFalse: dict, block_trace_diffTrue
     return reads, writes
 
 
-def parse_callTracer_trace_calls(call, reads, writes, writes_disabled):
+def parse_callTracer_trace_calls(call, reads, writes, inherited_prems):
+    # CALLTYPE, RF, WF, RT, WT
+    calls_prems = {
+        "CALL":[True,False,True,True],
+        "DELEGATECALL":[True,True,True,False],
+        "CALLCODE":[True,True,True,False],
+        "CREATE":[True,True,False,True],
+        "CREATE2":[True,True,False,True],
+        "STATICCALL":[True,False,True,False],
+        "SELFDESTRUCT":[True,False,False,True],
+        "SUICIDE":[True,False,False,True],
+        "INVALID":[False,False,False,False],
+        "REVERT":[False,False,False,False],
+    }
+    
     call_type = call["type"]
-    writes_disabled = writes_disabled
-
-    if call_type == "STATICCALL":
-        reads.add(call["to"])
-        reads.add(call["from"])
-        writes_disabled = True
-
-    elif call_type in ["DELEGATECALL", "CALLCODE"]:
-        if not writes_disabled:
-            writes.add(call["from"])
-        reads.add(call["from"])
-        reads.add(call["to"])
-
-    elif call_type in ["CREATE", "CREATE2", "CALL", "INVALID", "RETURN", "REVERT"] or call_type.startswith("LOG"):
-        if not writes_disabled:
-            writes.add(call["to"])
-        reads.add(call["from"])
-        reads.add(call["to"])
+    prems = [p0 and p1 for (p0, p1) in zip(calls_prems[call_type], inherited_prems)]
+    from_addr = call["from"]
+    to_addr = call["to"]
+    
+    if prems[0]:
+        reads.add(from_addr)
+    if prems[1]:
+        writes.add(from_addr)
+    if prems[2]:
+        reads.add(to_addr)
+    if prems[3]:
+        writes.add(to_addr)
 
     elif call_type == "SELFDESTRUCT":
         reads.add(call["from"])
