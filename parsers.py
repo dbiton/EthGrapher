@@ -58,7 +58,8 @@ def parse_preStateTracer_trace(block_trace_diffFalse: dict, block_trace_diffTrue
     for entry in block_trace_diffTrue:
         tx = entry["result"]
         tx_hash = entry["txHash"]
-        tx_writes = set(tx['pre']) | set(tx['post'])
+        tx_writes = set(tx['pre'])
+        tx_writes.update(set(tx['post']))
         if len(tx_writes) > 0:
           writes[tx_hash] = tx_writes
     
@@ -127,11 +128,11 @@ def parse_callTracer_trace(block_trace):
                 if tx_hash not in writes:
                     writes[tx_hash] = iter_writes
                 else:
-                    writes[tx_hash] |= iter_writes
+                    writes[tx_hash].update(iter_writes)
                 if tx_hash not in reads:
                     reads[tx_hash] = iter_reads
                 else:
-                    reads[tx_hash] |= iter_reads
+                    reads[tx_hash].update(iter_reads)
     return reads, writes
 
 def has_field(tx, field):
