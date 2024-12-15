@@ -20,6 +20,7 @@ def plot_data(csv_path):
     quant_fill = 0.05
 
     df = pd.read_csv(csv_path)
+    df = df.drop_duplicates('block_number')
 
     # Ensure the data has X, Y, and other columns
     if "density" not in df.columns or "txs" not in df.columns:
