@@ -40,7 +40,7 @@ def fetch_block_trace(block_number: int, tracer_name: str, tracer_config = {}) -
             ],
             "id": 1
         }
-        response = requests.post(CHAINSTACK_RPC_URL, json=payload, timeout=60)
+        response = requests.post(CHAINSTACK_RPC_URL, json=payload, timeout=600)
         if response.status_code == 200:
             print(f"fetched block trace {block_number} with {tracer_name}, {tracer_config}")
             return response.json()["result"]

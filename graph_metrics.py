@@ -4,6 +4,7 @@ from typing import Dict
 import networkx as nx
 from networkx.algorithms.community import greedy_modularity_communities
 
+
 def graph_average_degree(graph):
     try:
         num_edges = graph.number_of_edges()
@@ -150,7 +151,12 @@ def graph_clique(graph):
         print(f"Exception in graph_clique_number: {e}")
         return float('nan')
 
-def get_graph_stats(graph: nx.Graph, additional_stats = {}) -> Dict[str, float]:
+def get_call_metrics(trace: dict) -> Dict[str, float]:
+    results = {
+    }
+    return results
+
+def get_graph_metrics(graph: nx.Graph, additional_metrics = {}) -> Dict[str, float]:
     results = {
         "degree": graph_average_degree(graph),
         "greedy_color": graph_greedy_coloring(graph),
@@ -166,5 +172,5 @@ def get_graph_stats(graph: nx.Graph, additional_stats = {}) -> Dict[str, float]:
         "longest_path_length_monte_carlo": graph_longest_path_length(graph),
         "max_degree": graph_max_degree(graph)
     }
-    results.update(additional_stats)
+    results.update(additional_metrics)
     return results

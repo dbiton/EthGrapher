@@ -10,8 +10,8 @@ import networkx as nx
 import multiprocessing as mp
 
 from fetchers import fetch_parallel, fetcher_prestate
-from parsers import create_conflict_graph, parse_callTracer_trace, parse_preStateTracer_trace
-from graph_stats import *
+from parsers import create_conflict_graph, get_callTracer_additional_metrics, parse_callTracer_trace, parse_preStateTracer_trace
+from graph_metrics import *
 
 from plotters import plot_data
 from savers import append_to_file, save_prestate, save_to_file
@@ -32,17 +32,20 @@ def process_prestate_trace(block_number, diffFalse, diffTrue):
     reads, writes = parse_preStateTracer_trace(diffFalse, diffTrue)
     txs = [tx_trace["txHash"] for tx_trace in diffFalse]
     G = create_conflict_graph(txs, reads, writes)
-    return get_graph_stats(G, {"block_number": block_number, "txs": len(diffFalse)})
+    return get_graph_metrics(G, {"block_number": block_number, "txs": len(diffFalse)})
 
 def process_call_trace(block_number, call_trace):
     print(f"processing {block_number}...")
     if call_trace is None:
         print(f"{block_number} data is missing!")
         return None
+    metrics = {}
+    metrics.update(get_callTracer_additional_metrics(call_trace))
     reads, writes = parse_callTracer_trace(call_trace)
     txs = [tx_trace["txHash"] for tx_trace in call_trace]
     G = create_conflict_graph(txs, reads, writes)
-    return get_graph_stats(G, {"block_number": block_number, "txs": len(call_trace)})
+    metrics.update(get_graph_metrics(G, {"block_number": block_number, "txs": len(call_trace)}))
+    return metrics
 
 def generate_data(data_path, output_path, processor, limit = None):
     write_header = not os.path.exists(output_path)
@@ -87,9 +90,9 @@ def main():
     plot_data(output_path)
 
 def download():
-    dirpath = f"F:\\prev_E\\traces"
+    dirpath = f"F:\\prestate"
     filesize = 1000
-    for begin in range(21021000, 21100000, filesize):
+    for begin in range(21093000, 21200000, filesize):
         end = begin + filesize
         filename = f"{begin}_{end}_preState_compressed.h5"
         traces_generator = fetch_parallel(begin, end, fetcher_prestate)
@@ -109,6 +112,9 @@ def translate(path_src, path_dst):
     save_to_file(path_dst, generator_old(path_src))
 
 if __name__ == "__main__":
-    for filepath in get_files("E:\\eth_traces\\callTracer", "h5"):
-        generate_data(filepath, "output_calltracer.csv", process_call_trace)
-    plot_data('output_calltracer.csv')
+    # l = [(20334400, 20335000), (20623000, 20624000), (20772000, 20773000), (21010000, 21011000), (21012800, 21013000), (21070000, 21071000), (21080000, 21085000)]
+    # print(sum([v[1]-v[0] for v in l]))    
+    # [(20326000, 20399999), (20623000, 20623999), (20728000, 20772999), (21000000, 21008165), (21010000, 21010999), (21012800, 21012999), (21070000, 21084999), (21094000, 21199999)]
+    generate_data('F:\\prev_E\\traces\\20000000+missing.h5', "output_test.csv", process_call_trace)
+    plot_data('output_test.csv')
+    # download()

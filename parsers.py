@@ -1,5 +1,6 @@
 from typing import Dict, List, Set, Tuple
 import networkx as nx
+import numpy as np
 
 def hex_to_bytes(s: str) -> bytes:
     if isinstance(s, str) and s.startswith("0x"):
@@ -72,8 +73,37 @@ def parse_preStateTracer_trace(block_trace_diffFalse: dict, block_trace_diffTrue
     
     return reads, writes
 
+def create_call_graph_recursive(G: nx.Graph, call) -> None:
+    node_id = G.number_of_nodes()
+    G.add_node(node_id)
+    if 'calls' in call:
+        for call in call['calls']:
+            child_id = create_call_graph_recursive(G, call)
+            G.add_edge(node_id, child_id)
+    return node_id
 
-def parse_callTracer_trace_calls(call, reads, writes, inherited_prems):
+def create_call_graphs(trace) -> List[nx.Graph]:
+    graphs = []
+    for tx in trace:
+        G = nx.Graph()
+        create_call_graph_recursive(G, tx['result'])
+        graphs.append(G)
+    return graphs 
+
+def get_callTracer_additional_metrics(trace) -> Dict[str, float]:
+    call_graphs = create_call_graphs(trace)
+    call_counts = [G.number_of_nodes() for G in call_graphs]
+    call_height = [max(nx.shortest_path_length(G, source=0)) for G in call_graphs]
+    percent_txs_value_transfer = float('nan')
+    if len(trace) > 0:
+        percent_txs_value_transfer = len([h for h in call_height if h == 0]) / len(call_height)
+    return {
+        "mean_call_count": np.mean(call_counts),
+        "mean_call_height": np.mean(call_height),
+        "count_value_transfer_txs": percent_txs_value_transfer
+    }
+    
+def parse_callTracer_trace_calls(call, reads, writes, inherited_prems = [True, True, True, True]):
     # CALLTYPE, RF, WF, RT, WT
     calls_prems = {
         "CALL":[True,False,True,True],
@@ -102,15 +132,9 @@ def parse_callTracer_trace_calls(call, reads, writes, inherited_prems):
     if prems[3]:
         writes.add(to_addr)
 
-    elif call_type == "SELFDESTRUCT":
-        reads.add(call["from"])
-
-    else:
-        raise Exception(f"unhandled call type {call_type}!")
-
     if "calls" in call:
         for sub_call in call["calls"]:
-            parse_callTracer_trace_calls(sub_call, reads, writes, writes_disabled)
+            parse_callTracer_trace_calls(sub_call, reads, writes)
 
 
 def parse_callTracer_trace(block_trace):
@@ -124,7 +148,7 @@ def parse_callTracer_trace(block_trace):
             for call in tx["calls"]:
                 iter_reads = set()
                 iter_writes = set()
-                parse_callTracer_trace_calls(call, iter_reads, iter_writes, False)
+                parse_callTracer_trace_calls(call, iter_reads, iter_writes)
                 if tx_hash not in writes:
                     writes[tx_hash] = iter_writes
                 else:

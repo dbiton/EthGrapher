@@ -11,6 +11,34 @@ def plot_graph(graph):
     plt.title("Directed Graph Visualization")
     plt.show()
 
+def plot_block_size_distribution(df):
+    bucket_width = 16
+    block_sizes = list(df['txs'])
+    
+    # Determine the range of the data
+    min_val = min(block_sizes)
+    max_val = max(block_sizes)
+
+    # Construct bin edges: start at min_val and go up to max_val in steps of 20
+    # Adding a final 20 to max_val ensures we include the top edge
+    bins = np.arange(min_val, max_val + bucket_width, bucket_width)
+    
+    weights = np.ones(len(block_sizes)) / len(block_sizes)
+    
+    # Plot the histogram
+    plt.hist(block_sizes, bins=bins,weights=weights, edgecolor='black')
+
+    # Add labels and title for clarity
+    plt.xlabel('Block Size')
+    plt.ylabel('Frequency')
+    plt.xscale('log', base=2)
+    # plt.grid()
+    # plt.legend()
+    plt.tight_layout()
+    
+    # Save the plot
+    plt.savefig(f"figures\\block_size_dist.png")
+    plt.close()
 
 def plot_data(csv_path):
     markers = ["o", "s", "^", "v", "D", "*"]
@@ -20,8 +48,10 @@ def plot_data(csv_path):
     quant_fill = 0.05
 
     df = pd.read_csv(csv_path)
-    df = df.drop_duplicates('block_number')
-
+    df = df.drop_duplicates(subset='block_number', keep='first')
+    
+    plot_block_size_distribution(df)
+    
     # Ensure the data has X, Y, and other columns
     if "density" not in df.columns or "txs" not in df.columns:
         raise ValueError("The CSV file must contain 'X' and 'Y' columns.")
@@ -33,7 +63,7 @@ def plot_data(csv_path):
     split_values = sorted(list(split_values))
     # Create heatmaps for each property
     for prop in properties:
-        plt.figure(figsize=(8, 6))
+        plt.figure()
         for i_tx_group in range(len(split_values) + 1):
             if i_tx_group == 0:
                 txs_min = 0
@@ -74,11 +104,11 @@ def plot_data(csv_path):
                             alpha=0.2)  # Adjust 'alpha' for transparency
             
         plt.grid()
-        plt.title(f"{prop}")
+        # plt.title(f"{prop}")
         plt.ylabel(f"{prop}")
         plt.xlabel("density")
-        plt.tight_layout()
         plt.legend()
+        plt.tight_layout()
 
         # Save the plot
         plt.savefig(f"figures\\{prop}.png")
