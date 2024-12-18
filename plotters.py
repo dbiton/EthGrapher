@@ -1,4 +1,5 @@
 
+import json
 from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
@@ -40,6 +41,44 @@ def plot_block_size_distribution(df):
     plt.savefig(f"figures\\block_size_dist.png")
     plt.close()
 
+def plot_smart_contract_percent(_df):
+    plt.figure()
+    
+    quant_fill = 0.05
+    bins_count = 32
+    
+    df = _df[_df["txs"] > 0].copy()
+    block_number = df['block_number']
+    bins = np.linspace(block_number.min(), block_number.max(), num=bins_count)
+    df['block_number_bin'] = pd.cut(block_number, bins=bins, include_lowest=True)
+    prop = 'value_transfer_ratio'
+    df[prop] =  df['count_txs_value_transfer'] / df['txs']
+    
+    # Group by the bins and compute mean and SEM
+    grouped = df.groupby('block_number_bin')
+    mean_conflict = grouped["block_number"].mean()
+    mean_prop = grouped[prop].mean()
+    
+    low_prop = grouped[prop].quantile(quant_fill)
+    hi_prop = grouped[prop].quantile(1-quant_fill)
+
+    # Plot mean density with confidence intervals
+    plt.plot(mean_conflict, mean_prop)
+    plt.fill_between(mean_conflict,
+                    low_prop,
+                    hi_prop,
+                    alpha=0.2)
+    
+    # Add labels and title for clarity
+    plt.xlabel('Block Number')
+    plt.ylabel('Value-Transfer txs ratio')
+    plt.grid()
+    plt.tight_layout()
+    
+    # Save the plot
+    plt.savefig(f"figures\\value_transfer_txs_ratio.png")
+    plt.close()
+
 def plot_data(csv_path):
     markers = ["o", "s", "^", "v", "D", "*"]
     
@@ -49,8 +88,15 @@ def plot_data(csv_path):
 
     df = pd.read_csv(csv_path)
     df = df.drop_duplicates(subset='block_number', keep='first')
+
+    have = set(df['block_number'])
+    want = set(range(min(have), max(have)))
+    missing = want.difference(have)
+    with open("missing_calls.json", "w") as f:
+        json.dump(sorted(list(missing)), f)
     
     plot_block_size_distribution(df)
+    plot_smart_contract_percent(df)
     
     # Ensure the data has X, Y, and other columns
     if "density" not in df.columns or "txs" not in df.columns:

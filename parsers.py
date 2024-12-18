@@ -94,13 +94,11 @@ def get_callTracer_additional_metrics(trace) -> Dict[str, float]:
     call_graphs = create_call_graphs(trace)
     call_counts = [G.number_of_nodes() for G in call_graphs]
     call_height = [max(nx.shortest_path_length(G, source=0)) for G in call_graphs]
-    percent_txs_value_transfer = float('nan')
-    if len(trace) > 0:
-        percent_txs_value_transfer = len([h for h in call_height if h == 0]) / len(call_height)
+    count_txs_value_transfer = len([h for h in call_height if h == 0])
     return {
         "mean_call_count": np.mean(call_counts),
         "mean_call_height": np.mean(call_height),
-        "count_value_transfer_txs": percent_txs_value_transfer
+        "count_txs_value_transfer": count_txs_value_transfer
     }
     
 def parse_callTracer_trace_calls(call, reads, writes, inherited_prems = [True, True, True, True]):
