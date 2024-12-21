@@ -6,10 +6,16 @@ import pandas as pd
 import networkx as nx
 
 def plot_graph(graph):
-    plt.figure(figsize=(8, 6))
-    pos = nx.spring_layout(graph)  # positions for all nodes
-    nx.draw(graph, pos, arrows=True)#, with_labels=True)
-    plt.title("Directed Graph Visualization")
+    plt.figure(figsize=(6.4,6.4))
+    pos = nx.kamada_kawai_layout(graph)
+    nx.draw(
+        graph, pos,
+        node_color='blue',   # Fill color
+        edgecolors='black',   # Node border color
+        linewidths=2,       # Thickness of the border
+        node_size=256,
+        arrows=True
+    )
     plt.show()
 
 def plot_block_size_distribution(df):
@@ -87,16 +93,7 @@ def plot_data(csv_path):
     quant_fill = 0.05
 
     df = pd.read_csv(csv_path)
-    df = df.drop_duplicates(subset='block_number', keep='first')
-
-    have = set(df['block_number'])
-    want = set(range(min(have), max(have)))
-    missing = want.difference(have)
-    with open("missing_calls.json", "w") as f:
-        json.dump(sorted(list(missing)), f)
-    
-    plot_block_size_distribution(df)
-    plot_smart_contract_percent(df)
+    df = df.drop_duplicates('block_number')
     
     # Ensure the data has X, Y, and other columns
     if "density" not in df.columns or "txs" not in df.columns:
@@ -150,7 +147,6 @@ def plot_data(csv_path):
                             alpha=0.2)  # Adjust 'alpha' for transparency
             
         plt.grid()
-        # plt.title(f"{prop}")
         plt.ylabel(f"{prop}")
         plt.xlabel("density")
         plt.legend()
