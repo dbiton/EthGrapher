@@ -92,12 +92,17 @@ def create_call_graphs(trace) -> List[nx.Graph]:
 
 def get_callTracer_additional_metrics(trace) -> Dict[str, float]:
     call_graphs = create_call_graphs(trace)
-    call_counts = [G.number_of_nodes() for G in call_graphs]
-    call_height = [max(nx.shortest_path_length(G, source=0)) for G in call_graphs]
-    count_txs_value_transfer = len([h for h in call_height if h == 0])
+    call_graphs_smart_contracts = [G for G in call_graphs if G.number_of_nodes() > 1]
+    call_counts = [G.number_of_nodes() for G in call_graphs_smart_contracts]
+    call_heights = [1 + max(nx.shortest_path_length(G, source=0).values()) for G in call_graphs_smart_contracts]
+    call_degrees = [np.mean([val for (_, val) in G.degree()]) for G in call_graphs_smart_contracts]
+    call_leaves = [np.sum([1 for (node, val) in G.degree() if node != 0]) for G in call_graphs_smart_contracts]
+    count_txs_value_transfer = len(call_graphs) - len(call_graphs_smart_contracts)
     return {
-        "mean_call_count": np.mean(call_counts),
-        "mean_call_height": np.mean(call_height),
+        "mean_call_count_smart_contract": np.mean(call_counts),
+        "mean_call_height_smart_contract": np.mean(call_heights),
+        "mean_call_degree_smart_contract": np.mean(call_degrees),
+        "mean_call_count_leaves_smart_contract": np.mean(call_leaves),
         "count_txs_value_transfer": count_txs_value_transfer
     }
     

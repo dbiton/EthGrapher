@@ -6,16 +6,9 @@ import pandas as pd
 import networkx as nx
 
 def plot_graph(graph):
-    plt.figure(figsize=(6.4,6.4))
-    pos = nx.kamada_kawai_layout(graph)
-    nx.draw(
-        graph, pos,
-        node_color='blue',   # Fill color
-        edgecolors='black',   # Node border color
-        linewidths=2,       # Thickness of the border
-        node_size=256,
-        arrows=True
-    )
+    plt.figure(figsize=(8, 6))
+    pos = nx.kamada_kawai_layout(graph)  # positions for all nodes
+    nx.draw(graph, pos, arrows=True)#, with_labels=True)
     plt.show()
 
 def plot_block_size_distribution(df):
@@ -85,6 +78,47 @@ def plot_smart_contract_percent(_df):
     plt.savefig(f"figures\\value_transfer_txs_ratio.png")
     plt.close()
 
+def plot_call_metrics(_df):    
+    quant_fill = 0.05
+    bins_count = 64
+    
+    df = _df[_df["txs"] > 0].copy()
+    block_number = df['block_number']
+    bins = np.linspace(block_number.min(), block_number.max(), num=bins_count)
+    df['block_number_bin'] = pd.cut(block_number, bins=bins, include_lowest=True)
+    grouped = df.groupby('block_number_bin')
+    mean_conflict = grouped["block_number"].mean()
+    props = [
+        "mean_call_count_smart_contract",
+        "mean_call_height_smart_contract",
+        "mean_call_count_leaves_smart_contract",
+        "mean_call_degree_smart_contract"
+    ]
+    plt.figure()
+    for prop in props: 
+        mean_prop = grouped[prop].mean()
+        
+        low_prop = grouped[prop].quantile(quant_fill)
+        hi_prop = grouped[prop].quantile(1-quant_fill)
+
+        # Plot mean density with confidence intervals
+        plt.plot(mean_conflict, mean_prop, label=prop)
+        plt.fill_between(mean_conflict,
+                        low_prop,
+                        hi_prop,
+                        alpha=0.2)
+    
+    # Add labels and title for clarity
+    plt.xlabel('Block Number')
+    plt.yscale('log', base=2)
+    plt.legend()
+    plt.grid()
+    plt.tight_layout()
+    
+    # Save the plot
+    plt.savefig(f"figures\\call_metrics.png")
+    plt.close()
+
 def plot_data(csv_path):
     markers = ["o", "s", "^", "v", "D", "*"]
     
@@ -93,7 +127,21 @@ def plot_data(csv_path):
     quant_fill = 0.05
 
     df = pd.read_csv(csv_path)
-    df = df.drop_duplicates('block_number')
+    df = df.drop_duplicates(subset='block_number', keep='first')
+    
+    print(max(df['block_number']),  min(df['block_number']), max(df['block_number'])-min(df['block_number']), len(df['block_number']))
+    
+    # df['ratio_txs_value_transfer'] = df['count_txs_value_transfer'] / df['txs']
+    
+    #plot_call_metrics(df)
+    plot_block_size_distribution(df)
+    #plot_smart_contract_percent(df)
+    df['min_path_chromatic_ratio'] = df['longest_path_length_monte_carlo'] / df['greedy_color']
+    df['max_path_chromatic_ratio'] = df['largest_conn_comp'] / df['clique_number']
+    
+    print("XXXX")
+    print(np.median(df['min_path_chromatic_ratio']), np.median(df['max_path_chromatic_ratio']))
+    print(np.mean(df['min_path_chromatic_ratio']), np.mean(df['max_path_chromatic_ratio']))
     
     # Ensure the data has X, Y, and other columns
     if "density" not in df.columns or "txs" not in df.columns:
@@ -153,6 +201,7 @@ def plot_data(csv_path):
         plt.tight_layout()
 
         # Save the plot
+        plt.yscale('log')
         plt.savefig(f"figures\\{prop}.png")
         plt.close()
 

@@ -26,7 +26,7 @@ def fetch_parallel(iter: int, fetcher: Callable[[int], Any]):
               yield result
 
 
-def fetch_block_trace(block_number: int, tracer_name: str, tracer_config = {}) -> dict:
+def fetch_block_trace(block_number: str, tracer_name: str, tracer_config = {}) -> dict:
     CHAINSTACK_RPC_URL = "https://ethereum-mainnet.core.chainstack.com/4033397d5b35d9414e7039efbdae0d45"
     if tracer_name not in ["callTracer", "prestateTracer"]:
       raise Exception(f"unknown tracer type {tracer_name}")

@@ -38,7 +38,7 @@ def append_to_file(filename: str, generator, limit=None) -> None:
         return
       chunk = json.dumps(chunk)
       chunk = chunk.encode('ascii')
-      chunk = zlib.compress(chunk, 4)
+      chunk = zlib.compress(chunk, 7)
       chunk = np.frombuffer(chunk, dtype=np.uint8)
       with h5py.File(filename, 'a') as f:
         dset = f['dataset']

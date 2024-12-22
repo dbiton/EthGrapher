@@ -9,11 +9,12 @@ import pandas as pd
 import networkx as nx
 import multiprocessing as mp
 
-from fetchers import fetch_parallel, fetcher_prestate
+from fetchers import fetch_block, fetch_block_trace, fetch_parallel, fetcher_prestate, fetcher_call
 from parsers import create_conflict_graph, get_callTracer_additional_metrics, parse_callTracer_trace, parse_preStateTracer_trace
 from graph_metrics import *
 
 from plotters import plot_data
+import plotters
 from savers import append_to_file, save_prestate, save_to_file
 
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
@@ -90,12 +91,12 @@ def main():
     plot_data(output_path)
 
 def download():
-    dirpath = f"F:\\prestate"
+    dirpath = f"F:\\prev_E\\missing"
     filesize = 1000
-    for begin in range(21093000, 21200000, filesize):
+    for begin in range(21100000, 21200000, filesize):
         end = begin + filesize
         filename = f"{begin}_{end}_preState_compressed.h5"
-        traces_generator = fetch_parallel(begin, end, fetcher_prestate)
+        traces_generator = fetch_parallel(range(begin, end), fetcher_prestate)
         save_to_file(os.path.join(dirpath, filename), traces_generator)
 
 def generator_old(filepath):
@@ -115,6 +116,17 @@ if __name__ == "__main__":
     # l = [(20334400, 20335000), (20623000, 20624000), (20772000, 20773000), (21010000, 21011000), (21012800, 21013000), (21070000, 21071000), (21080000, 21085000)]
     # print(sum([v[1]-v[0] for v in l]))    
     # [(20326000, 20399999), (20623000, 20623999), (20728000, 20772999), (21000000, 21008165), (21010000, 21010999), (21012800, 21012999), (21070000, 21084999), (21094000, 21199999)]
-    generate_data('F:\\prev_E\\traces\\20000000+missing.h5', "output_test.csv", process_call_trace)
-    plot_data('output_test.csv')
-    # download()
+    block_number_search = 20334250
+    for v in load_compressed_file("C:\\Users\\User\\Desktop\\Projects\\EthGrapher\\20334000_20334400_preState_compressed.h5"):
+        if v[0] == 20334250:
+            diffFalse = v[1]
+            diffTrue = v[2]
+            reads, writes = parse_preStateTracer_trace(diffFalse, diffTrue)
+            txs = [tx_trace["txHash"] for tx_trace in diffFalse]
+            G = create_conflict_graph(txs, reads, writes)
+            plotters.plot_graph(G)
+            break
+            x = 3
+        x = 3
+        
+    
