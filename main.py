@@ -87,7 +87,7 @@ def main():
     if os.path.exists(output_path):
         os.remove(output_path)
     for file in get_files(dirpath, ".h5"):
-        generate_data(file, "output.csv")
+        generate_data(file, "output.csv", process_prestate_trace)
     plot_data(output_path)
 
 def download_files():
