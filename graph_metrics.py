@@ -151,6 +151,53 @@ def graph_clique(graph):
         print(f"Exception in graph_clique_number: {e}")
         return float('nan')
 
+
+def get_vertex_cover_nx_approx(graph: nx.Graph) -> int:    
+    res = nx.algorithms.approximation.vertex_cover.min_weighted_vertex_cover(graph)
+    return len(res)
+
+def get_vertex_cover_pop_max_deg_approx(graph: nx.Graph) -> int:
+    # Create a copy of the graph to avoid modifying the original graph
+    graph = graph.copy()
+    vertex_cover = set()
+
+    # Repeat until there are no more edges in the graph
+    while graph.number_of_edges() > 0:
+        # Find the vertex with the highest degree
+        highest_degree_node = max(graph.degree, key=lambda x: x[1])[0]
+
+        # Add the vertex to the vertex cover
+        vertex_cover.add(highest_degree_node)
+
+        # Remove the selected vertex and its edges from the graph
+        graph.remove_node(highest_degree_node)
+
+    return len(vertex_cover)
+
+def get_vertex_cover_dummy_approx(graph: nx.Graph) -> int:
+    # Create a copy of the graph to avoid modifying the original graph
+    graph = graph.copy()
+    vertex_cover = set()
+    
+    #the average degree of the graph
+    d = 2*len(graph.edges())/ len(graph.nodes())
+    
+    # Repeat until there are no more edges in the graph
+    while graph.number_of_edges() > 0:
+        # Find the vertex with the highest degree
+        highest_degree_node, max_degree = max(graph.degree(), key=lambda x: x[1])
+        if max_degree < d:
+            return len(vertex_cover)
+        # highest_degree_node = max(graph.degree, key=lambda x: x[1])[0]
+
+        # Add the vertex to the vertex cover
+        vertex_cover.add(highest_degree_node)
+
+        # Remove the selected vertex and its edges from the graph
+        graph.remove_node(highest_degree_node)
+
+    return len(vertex_cover)
+
 def get_call_metrics(trace: dict) -> Dict[str, float]:
     results = {
     }
@@ -170,7 +217,10 @@ def get_graph_metrics(graph: nx.Graph, additional_metrics = {}) -> Dict[str, flo
         "density": graph_density(graph),
         "largest_conn_comp": graph_largest_connected_component_size(graph),
         "longest_path_length_monte_carlo": graph_longest_path_length(graph),
-        "max_degree": graph_max_degree(graph)
+        "max_degree": graph_max_degree(graph),
+        "vertex_cover_pop_max_deg_approx": get_vertex_cover_pop_max_deg_approx(graph),
+        "vertex_cover_dummy_approx": get_vertex_cover_dummy_approx(graph),
+        "vertex_cover_nx_approx": get_vertex_cover_nx_approx(graph)
     }
     results.update(additional_metrics)
     return results
