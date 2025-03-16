@@ -1,4 +1,3 @@
-from itertools import permutations
 import random
 from typing import Dict
 import networkx as nx
@@ -17,6 +16,7 @@ def graph_average_degree(graph):
         print(f"Exception in graph_average_degree: {e}")
         return float('nan')
 
+
 def graph_max_degree(graph: nx.Graph):
     try:
         return max([val for (node, val) in graph.degree()], default=0)
@@ -32,6 +32,7 @@ def graph_cluster_coe(graph):
         print(f"Exception in graph_cluster_coe: {e}")
         return float('nan')
 
+
 def graph_greedy_coloring(graph):
     try:
         coloring = nx.coloring.greedy_color(graph, strategy="DSATUR")
@@ -40,6 +41,7 @@ def graph_greedy_coloring(graph):
         print(f"Exception in graph_coloring: {e}")
         return float('nan')
 
+
 def graph_transitivity(graph):
     try:
         return nx.transitivity(graph)
@@ -47,12 +49,14 @@ def graph_transitivity(graph):
         print(f"Exception in graph_transitivity: {e}")
         return float('nan')
 
+
 def graph_assortativity(graph):
     try:
         return nx.degree_assortativity_coefficient(graph)
     except Exception as e:
         print(f"Exception in graph_assortativity: {e}")
         return float('nan')
+
 
 def graph_modularity(G):
     try:
@@ -62,12 +66,8 @@ def graph_modularity(G):
         print(f"Exception in graph_modularity: {e}")
         return float('nan')
 
-def graph_density(graph):
-    try:
-        return nx.density(graph)
-    except Exception as e:
-        print(f"Exception in graph_density: {e}")
-        return float('nan')
+
+
 
 def graph_diameter(G):
     try:
@@ -80,11 +80,12 @@ def graph_diameter(G):
         print(f"Exception in graph_diameter: {e}")
         return float('nan')
 
-def graph_density(G):
+
+def graph_density(graph):
     try:
-        return nx.density(G)
+        return nx.density(graph)
     except Exception as e:
-        print(f"Exception in graph_conflict_percentage: {e}")
+        print(f"Exception in graph_density: {e}")
         return float('nan')
 
 def graph_conflict_percentage(G):
@@ -126,6 +127,7 @@ def graph_longest_path_length(G):
         print(f"Exception in graph_longest_path_length: {e}")
         return float('nan')
 
+
 # instead make a random path!
 def graph_largest_connected_component_size(G):
     try:
@@ -137,6 +139,7 @@ def graph_largest_connected_component_size(G):
     except Exception as e:
         print(f"Exception in graph_largest_connected_component_size: {e}")
         return float('nan')
+
 
 def graph_clique(graph):
     try:
@@ -152,64 +155,79 @@ def graph_clique(graph):
         return float('nan')
 
 
-def get_vertex_cover_nx_approx(graph: nx.Graph) -> int:    
-    res = nx.algorithms.approximation.vertex_cover.min_weighted_vertex_cover(graph)
-    return len(res)
+def get_vertex_cover_nx_approx(graph: nx.Graph) -> int:
+    try:
+        res = nx.algorithms.approximation.vertex_cover.min_weighted_vertex_cover(graph)
+        return len(res)
+    except Exception as e:
+        print(f"Exception in get_vertex_cover_nx_approx: {e}")
+        return float('nan')
+
 
 def get_vertex_cover_pop_max_deg_approx(graph: nx.Graph) -> int:
-    # Create a copy of the graph to avoid modifying the original graph
-    graph = graph.copy()
-    vertex_cover = set()
+    try:
+        # Create a copy of the graph to avoid modifying the original graph
+        graph = graph.copy()
+        vertex_cover = set()
 
-    # Repeat until there are no more edges in the graph
-    while graph.number_of_edges() > 0:
-        # Find the vertex with the highest degree
-        highest_degree_node = max(graph.degree, key=lambda x: x[1])[0]
+        # Repeat until there are no more edges in the graph
+        while graph.number_of_edges() > 0:
+            # Find the vertex with the highest degree
+            highest_degree_node = max(graph.degree, key=lambda x: x[1])[0]
 
-        # Add the vertex to the vertex cover
-        vertex_cover.add(highest_degree_node)
+            # Add the vertex to the vertex cover
+            vertex_cover.add(highest_degree_node)
 
-        # Remove the selected vertex and its edges from the graph
-        graph.remove_node(highest_degree_node)
+            # Remove the selected vertex and its edges from the graph
+            graph.remove_node(highest_degree_node)
 
-    return len(vertex_cover)
+        return len(vertex_cover)
+    except Exception as e:
+        print(f"Exception in get_vertex_cover_pop_max_deg_approx: {e}")
+        return float('nan')
+
 
 def get_vertex_cover_dummy_approx(graph: nx.Graph) -> int:
-    # Create a copy of the graph to avoid modifying the original graph
-    graph = graph.copy()
-    vertex_cover = set()
-    
-    #the average degree of the graph
-    d = 2*len(graph.edges())/ len(graph.nodes())
-    
-    # Repeat until there are no more edges in the graph
-    while graph.number_of_edges() > 0:
-        # Find the vertex with the highest degree
-        highest_degree_node, max_degree = max(graph.degree(), key=lambda x: x[1])
-        if max_degree < d:
-            return len(vertex_cover)
-        # highest_degree_node = max(graph.degree, key=lambda x: x[1])[0]
+    try:
+        # Create a copy of the graph to avoid modifying the original graph
+        graph = graph.copy()
+        vertex_cover = set()
+        
+        # the average degree of the graph
+        d = 2 * len(graph.edges()) / len(graph.nodes())
+        
+        # Repeat until there are no more edges in the graph
+        while graph.number_of_edges() > 0:
+            # Find the vertex with the highest degree
+            highest_degree_node, max_degree = max(graph.degree(), key=lambda x: x[1])
+            if max_degree < d:
+                return len(vertex_cover)
+            # highest_degree_node = max(graph.degree, key=lambda x: x[1])[0]
 
-        # Add the vertex to the vertex cover
-        vertex_cover.add(highest_degree_node)
+            # Add the vertex to the vertex cover
+            vertex_cover.add(highest_degree_node)
 
-        # Remove the selected vertex and its edges from the graph
-        graph.remove_node(highest_degree_node)
+            # Remove the selected vertex and its edges from the graph
+            graph.remove_node(highest_degree_node)
 
-    return len(vertex_cover)
+        return len(vertex_cover)
+    except Exception as e:
+        print(f"Exception in get_vertex_cover_pop_max_deg_approx: {e}")
+        return float('nan')
+
 
 def get_call_metrics(trace: dict) -> Dict[str, float]:
     results = {
     }
     return results
 
-def get_graph_metrics(graph: nx.Graph, additional_metrics = {}) -> Dict[str, float]:
+
+def get_graph_metrics(graph: nx.Graph, additional_metrics={}) -> Dict[str, float]:
     results = {
         "degree": graph_average_degree(graph),
         "greedy_color": graph_greedy_coloring(graph),
         "assortativity": graph_assortativity(graph),
         "cluster_coe": graph_cluster_coe(graph),
-        "density": graph_density(graph),
         "modularity": graph_modularity(graph),
         "transitivity": graph_transitivity(graph),
         "diameter": graph_diameter(graph),
