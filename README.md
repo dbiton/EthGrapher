@@ -44,6 +44,10 @@ It provides tools to fetch, parse, and graph Ethereum data, calculate metrics, a
 
 The project requires the following Python packages (specified in `requirements.txt`):
 
+## Dataset
+
+https://huggingface.co/datasets/dbiton/EthereumStatistics
+
 ## Contact
 
 For any questions or issues, please contact the project maintainer.
