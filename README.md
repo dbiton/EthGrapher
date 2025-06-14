@@ -1,8 +1,13 @@
-
 # EthGrapher
 
 EthGrapher is a Python project designed for analyzing and visualizing Ethereum blockchain data. 
 It provides tools to fetch, parse, and graph Ethereum data, calculate metrics, and produce insightful visualizations.
+
+## ChainGrapher
+An improved, more modular version of this project is available at: 
+https://github.com/dbiton/ChainGrapher/
+
+ChainGrapher includes support for other chains, bugfixes and optimizations.
 
 ## Project Structure
 
@@ -34,8 +39,8 @@ It provides tools to fetch, parse, and graph Ethereum data, calculate metrics, a
 
 ## Usage
 
-1. Prepare the necessary data (e.g., Ethereum ledger data) or use the provided `ethereum_ledger.pkl`.
-2. Run the main script to start the analysis and visualization process:
+1. Download traces using the download function in main
+2. Run the main function to generate a csv file with properties for each block and generate the plots from the paper.
    ```bash
    python main.py
    ```
@@ -45,6 +50,8 @@ It provides tools to fetch, parse, and graph Ethereum data, calculate metrics, a
 The project requires the following Python packages (specified in `requirements.txt`):
 
 ## Dataset
+
+The resulting csv for RW conflict graphs is available here:
 
 https://huggingface.co/datasets/dbiton/EthereumStatistics
 
